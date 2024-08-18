@@ -1,0 +1,80 @@
+
+Discarded input sections
+
+ .text          0x00000000        0x0 main.o
+ .data          0x00000000        0x0 main.o
+ .bss           0x00000000        0x0 main.o
+ .comment       0x00000000       0x1c main.o
+ .text          0x00000000        0x0 start.o
+ .data          0x00000000        0x0 start.o
+ .bss           0x00000000        0x0 start.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+RAM              0x00000000         0x00020000         xrw
+AEE_ROM          0xffff8000         0x00004000         xr
+AEE_RAM          0xffffc000         0x00004000         rw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+
+.text           0xffff8000      0x355
+ *(.init)
+ .init          0xffff8000      0x188 start.o
+                0xffff8000                _start
+                0xffff8074                _machine_exception_handler
+ *(.text*)
+ .text.exception_handler
+                0xffff8188       0x20 main.o
+                0xffff8188                exception_handler
+ .text.startup.main
+                0xffff81a8       0xe4 main.o
+                0xffff81a8                main
+                0xffff828c                        __text_end = .
+ *(.rodata*)
+ .rodata.main.str1.4
+                0xffff828c       0xc9 main.o
+
+.rela.dyn       0xffff8358        0x0
+ .rela.init     0xffff8358        0x0 main.o
+
+.data           0xffffc000        0x0 load address 0xffff8355
+                0xffffc000                        __data_begin = .
+ *(.data*)
+ *(.eh_frame*)
+                0xffffc000                        __data_end = ALIGN (0x4)
+
+.bss            0xffffc000        0x0
+                0xffffc000                        __bss_begin = .
+ *(.bss*)
+ *(.sbss)
+                0xffffc000                        __bss_end = ALIGN (0x4)
+                0x00000000                        __stack_top = 0x0
+
+.sbss.uart0     0xffffc000        0x4
+ .sbss.uart0    0xffffc000        0x4 main.o
+
+/DISCARD/
+ *(.comment)
+LOAD main.o
+LOAD start.o
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a
+START GROUP
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/../../../../riscv32-unknown-elf/lib/libc.a
+END GROUP
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a
+START GROUP
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/../../../../riscv32-unknown-elf/lib/libc.a
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/../../../../riscv32-unknown-elf/lib/libnosys.a
+END GROUP
+OUTPUT(bootloader.elf elf32-littleriscv)
+
+.riscv.attributes
+                0x00000000       0x29
+ .riscv.attributes
+                0x00000000       0x25 main.o
+ .riscv.attributes
+                0x00000025       0x27 start.o

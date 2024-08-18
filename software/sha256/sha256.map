@@ -1,0 +1,162 @@
+Archive member included to satisfy reference by file (symbol)
+
+/home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+                              main.o (__divsi3)
+
+Discarded input sections
+
+ .text          0x00000000        0x0 main.o
+ .data          0x00000000        0x0 main.o
+ .bss           0x00000000        0x0 main.o
+ .comment       0x00000000       0x1c main.o
+ .text          0x00000000        0x0 sha256.o
+ .data          0x00000000        0x0 sha256.o
+ .bss           0x00000000        0x0 sha256.o
+ .rodata.sha256_format_hash.str1.4
+                0x00000000       0x11 sha256.o
+ .text.sha256_format_hash
+                0x00000000       0x48 sha256.o
+ .comment       0x00000000       0x1c sha256.o
+ .text          0x00000000        0x0 start.o
+ .data          0x00000000        0x0 start.o
+ .bss           0x00000000        0x0 start.o
+ .data          0x00000000        0x0 /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+ .bss           0x00000000        0x0 /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+RAM              0x00000000         0x00020000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+
+.text           0x00000000     0x11f8
+ *(.init)
+ .init          0x00000000      0x158 start.o
+                0x00000000                _start
+                0x00000044                _machine_exception_handler
+                0x00000158                        __text_begin = .
+ *(.text*)
+ .text.exception_handler
+                0x00000158      0x578 main.o
+                0x00000158                exception_handler
+ .text.startup.main
+                0x000006d0      0x19c main.o
+                0x000006d0                main
+ .text.sha256_reset
+                0x0000086c       0x64 sha256.o
+                0x0000086c                sha256_reset
+ .text.sha256_hash_block
+                0x000008d0      0x280 sha256.o
+                0x000008d0                sha256_hash_block
+ .text.sha256_pad_le_block
+                0x00000b50      0x4d0 sha256.o
+                0x00000b50                sha256_pad_le_block
+ .text.sha256_get_hash
+                0x00001020      0x124 sha256.o
+                0x00001020                sha256_get_hash
+ .text          0x00001144       0xb4 /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+                0x00001144                __divsi3
+                0x0000114c                __hidden___udivsi3
+                0x0000114c                __udivsi3
+                0x00001194                __umodsi3
+                0x000011c8                __modsi3
+                0x000011f8                        __text_end = .
+
+.rodata         0x000011f8      0x150
+                0x000011f8                        __rodata_begin = .
+ *(.rodata*)
+ .rodata.exception_handler.str1.4
+                0x000011f8       0x4f main.o
+                                 0x15 (size before relaxing)
+ .rodata.main.str1.4
+                0x00001247       0x37 main.o
+ *fill*         0x00001247        0x1 
+ .rodata.constants
+                0x00001248      0x100 sha256.o
+                0x00001348                        __rodata_end = .
+
+.rela.dyn       0x00001348        0x0
+ .rela.init     0x00001348        0x0 main.o
+
+.data           0x00001348        0x0
+                0x00001348                        __data_begin = .
+ *(.data*)
+ *(.eh_frame*)
+                0x00001348                        __data_end = .
+
+.sdata.reset_counter
+                0x00001348        0x1
+ .sdata.reset_counter
+                0x00001348        0x1 main.o
+
+.sdata.led_status
+                0x00001349        0x1
+ .sdata.led_status
+                0x00001349        0x1 main.o
+
+.bss            0x0000134c       0x14
+                0x0000134c                        __bss_begin = .
+ *(.bss*)
+ *(.sbss*)
+ .sbss.hashes_per_second
+                0x0000134c        0x4 main.o
+ .sbss.timer1   0x00001350        0x4 main.o
+ .sbss.timer0   0x00001354        0x4 main.o
+ .sbss.uart0    0x00001358        0x4 main.o
+ .sbss.gpio0    0x0000135c        0x4 main.o
+                0x00001360                        __bss_end = ALIGN (0x4)
+                0x00020000                        __stack_top = 0x20000
+
+/DISCARD/
+ *(.comment)
+LOAD main.o
+LOAD sha256.o
+LOAD start.o
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/../../../../riscv32-unknown-elf/lib/libm.a
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a
+START GROUP
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/../../../../riscv32-unknown-elf/lib/libc.a
+END GROUP
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a
+START GROUP
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/../../../../riscv32-unknown-elf/lib/libc.a
+LOAD /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/../../../../riscv32-unknown-elf/lib/libnosys.a
+END GROUP
+OUTPUT(sha256.elf elf32-littleriscv)
+
+.riscv.attributes
+                0x00000000       0x29
+ .riscv.attributes
+                0x00000000       0x29 main.o
+ .riscv.attributes
+                0x00000029       0x25 sha256.o
+ .riscv.attributes
+                0x0000004e       0x27 start.o
+ .riscv.attributes
+                0x00000075       0x1a /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+
+.debug_line     0x00000000      0x153
+ .debug_line    0x00000000      0x153 /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+
+.debug_line_str
+                0x00000000       0x8d
+ .debug_line_str
+                0x00000000       0x8d /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+
+.debug_info     0x00000000       0x5f
+ .debug_info    0x00000000       0x5f /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+
+.debug_abbrev   0x00000000       0x28
+ .debug_abbrev  0x00000000       0x28 /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+
+.debug_aranges  0x00000000       0x20
+ .debug_aranges
+                0x00000000       0x20 /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+
+.debug_str      0x00000000       0xc8
+ .debug_str     0x00000000       0xc8 /home/farhad/riscv-toolchain/rv32i/lib/gcc/riscv32-unknown-elf/13.2.0/libgcc.a(div.o)
+                                 0xd2 (size before relaxing)
