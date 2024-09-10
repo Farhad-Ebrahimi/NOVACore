@@ -40,54 +40,53 @@ begin
   Gen1 : for i in 0 to 7 generate
     process (Xi, Yi)
     begin
-      case Yi(4 * i + 1 downto 4 * i) is
-        when "01" =>
+      -- First case statement converted to if-elsif
+      if Yi(4 * i + 1 downto 4 * i) = "01" then
           Fr_Mem(2 * i) <= "00" & not(Xi);
-        when "10" =>
+      elsif Yi(4 * i + 1 downto 4 * i) = "10" then
           Fr_Mem(2 * i) <= "00" & Xi;
-        when others              =>
+      else
           Fr_Mem(2 * i) <= (others => '0');
-      end case;
-
-      case Yi(4 * i + 3 downto 4 * i + 2) is
-        when "01" =>
+      end if;
+      
+      -- Second case statement converted to if-elsif
+      if Yi(4 * i + 3 downto 4 * i + 2) = "01" then
           Fr_Mem(2 * i + 1) <= not(Xi) & "00";
-        when "10" =>
+      elsif Yi(4 * i + 3 downto 4 * i + 2) = "10" then
           Fr_Mem(2 * i + 1) <= Xi & "00";
-        when others                  =>
+      else
           Fr_Mem(2 * i + 1) <= (others => '0');
-      end case;
-
-      case Yi(4 * i + 33 downto 4 * i + 32) is
-        when "01" =>
+      end if;
+      
+      -- Third case statement converted to if-elsif
+      if Yi(4 * i + 33 downto 4 * i + 32) = "01" then
           Sr_Mem(2 * i) <= "00" & not(Xi);
-        when "10" =>
+      elsif Yi(4 * i + 33 downto 4 * i + 32) = "10" then
           Sr_Mem(2 * i) <= "00" & Xi;
-        when others              =>
+      else
           Sr_Mem(2 * i) <= (others => '0');
-      end case;
-
-      case Yi(4 * i + 35 downto 4 * i + 34) is
-        when "01" =>
+      end if;
+      
+      -- Fourth case statement converted to if-elsif
+      if Yi(4 * i + 35 downto 4 * i + 34) = "01" then
           Sr_Mem(2 * i + 1) <= not(Xi) & "00";
-        when "10" =>
+      elsif Yi(4 * i + 35 downto 4 * i + 34) = "10" then
           Sr_Mem(2 * i + 1) <= Xi & "00";
-        when others                  =>
+      else
           Sr_Mem(2 * i + 1) <= (others => '0');
-      end case;
+      end if;
     end process;
   end generate Gen1;
   
   process (Xi, Yi)
     begin
-        case Yi(65 downto 64) is
-           when "01" =>
-               Lpp <= "00" & not(Xi);
-           when "10" =>
-               Lpp <= "00" & Xi;
-           when others =>
-               Lpp <= (others => '0');
-        end case;
+        if Yi(65 downto 64) = "01" then
+            Lpp <= "00" & not(Xi);
+        elsif Yi(65 downto 64) = "10" then
+            Lpp <= "00" & Xi;
+        else
+            Lpp <= (others => '0');
+        end if;
     end process;
 
   Gen3 : for i in 0 to 7 generate

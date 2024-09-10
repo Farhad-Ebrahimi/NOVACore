@@ -86,6 +86,7 @@ set obj [get_filesets sources_1]
 
 # Import local files from the original project
 set files [list \
+ [file normalize "${origin_dir}/../src/aee_rom.vhd"]\
  [file normalize "${origin_dir}/../src/Bin2Ter.vhd"]\
  [file normalize "${origin_dir}/../src/mul_stg3.vhd"]\
  [file normalize "${origin_dir}/../src/CSD_Adder.vhd"]\
@@ -128,18 +129,8 @@ set files [list \
  [file normalize "${origin_dir}/../soc/pp_soc_reset.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_soc_timer.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_soc_uart.vhd"]\
- [file normalize "${origin_dir}/../software/bootloader/bootloader.coe"]\
 ]
 add_files -fileset sources_1 $files
-
-
-# Import IPs
-set files [list \
- [file normalize "${origin_dir}/../src/xilinx_ip/clock_generator/clock_generator.xci" ]\
- [file normalize "${origin_dir}/../src/xilinx_ip/aee_rom/aee_rom.xci" ]\
-]
-add_files -fileset sources_1 $files
-set_property CONFIG.Coe_File [file normalize "${origin_dir}/../software/bootloader/bootloader.coe"] [get_ips aee_rom]
 
 # Create 'constrs_1' fileset (if not found)
 if {[string equal [get_filesets -quiet constrs_1] ""]} {

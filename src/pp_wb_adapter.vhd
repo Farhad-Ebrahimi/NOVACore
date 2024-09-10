@@ -43,18 +43,17 @@ architecture behaviour of pp_wb_adapter is
 	begin
 		case size is
 			when b"01" =>
-				case address(1 downto 0) is
-					when b"00" =>
-						return 0;
-					when b"01" =>
-						return 8;
-					when b"10" =>
-						return 16;
-					when b"11" =>
-						return 24;
-					when others =>
-						return 0;
-				end case;
+				if address(1 downto 0) = "00" then
+                    return 0;
+                elsif address(1 downto 0) = "01" then
+                    return 8;
+                elsif address(1 downto 0) = "10" then
+                    return 16;
+                elsif address(1 downto 0) = "11" then
+                    return 24;
+                else
+                    return 0;
+                end if;
 			when b"10" =>
 				if address(1) = '0' then
 					return 0;

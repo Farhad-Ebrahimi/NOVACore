@@ -24,22 +24,13 @@ use ieee.std_logic_1164.all;
 -- 0xffffc000: Application execution environment RAM (16 kB)
 entity toplevel is
 	port(
-		clk     : in  std_logic;
+		system_clk : in  std_logic;
+		system_clk_locked  : in  std_logic;
 		reset_n : in  std_logic;
-
-		-- GPIOs:
-		-- 4x LEDs        (bits 11 downto 8)
-		-- 4x Switches    (bits  7 downto 4)
-		-- 4x Buttons     (bits  3 downto 0)
---		gpio_pins : inout std_logic_vector(11 downto 0);
 
 		-- UART0 signals:
 		uart0_txd : out std_logic;
 		uart0_rxd : in  std_logic
-
-		-- UART1 signals:
---		uart1_txd : out std_logic;
---		uart1_rxd : in  std_logic
 	);
 end entity toplevel;
 
@@ -47,10 +38,6 @@ architecture behaviour of toplevel is
 
 	-- Reset signals:
 	signal reset : std_logic;
-
-	-- Internal clock signals:
-	signal system_clk : std_logic;
-	signal system_clk_locked : std_logic;
 
 	-- Interrupt indices:
 	constant IRQ_TIMER0_INDEX    : natural := 0;
@@ -103,24 +90,6 @@ architecture behaviour of toplevel is
 	signal uart0_we_in   : std_logic;
 	signal uart0_ack_out : std_logic;
 
-	-- UART1 signals:
---	signal uart1_adr_in  : std_logic_vector(11 downto 0);
---	signal uart1_dat_in  : std_logic_vector( 7 downto 0);
---	signal uart1_dat_out : std_logic_vector( 7 downto 0);
---	signal uart1_cyc_in  : std_logic;
---	signal uart1_stb_in  : std_logic;
---	signal uart1_we_in   : std_logic;
---	signal uart1_ack_out : std_logic;
-
---	-- GPIO signals:
---	signal gpio_adr_in  : std_logic_vector(11 downto 0);
---	signal gpio_dat_in  : std_logic_vector(31 downto 0);
---	signal gpio_dat_out : std_logic_vector(31 downto 0);
---	signal gpio_cyc_in  : std_logic;
---	signal gpio_stb_in  : std_logic;
---	signal gpio_we_in   : std_logic;
---	signal gpio_ack_out : std_logic;
-
 	-- Interconnect control module:
 	signal intercon_adr_in  : std_logic_vector(11 downto 0);
 	signal intercon_dat_in  : std_logic_vector(31 downto 0);
@@ -171,7 +140,7 @@ architecture behaviour of toplevel is
 	-- Selected peripheral on the interconnect:
 	type intercon_peripheral_type is (
 		PERIPHERAL_TIMER0, PERIPHERAL_TIMER1,
-		PERIPHERAL_UART0, --PERIPHERAL_UART1, -- PERIPHERAL_GPIO,
+		PERIPHERAL_UART0,
 		PERIPHERAL_AEE_ROM, PERIPHERAL_AEE_RAM, PERIPHERAL_INTERCON,
 		PERIPHERAL_MAIN_MEMORY, PERIPHERAL_ERROR, PERIPHERAL_NONE);
 	signal intercon_peripheral : intercon_peripheral_type := PERIPHERAL_NONE;
@@ -212,10 +181,6 @@ begin
 									intercon_peripheral <= PERIPHERAL_TIMER1;
 								when x"2" =>
 									intercon_peripheral <= PERIPHERAL_UART0;
---								when x"3" =>
---									intercon_peripheral <= PERIPHERAL_UART1;
---								when x"4" =>
---									intercon_peripheral <= PERIPHERAL_GPIO;
 								when x"5" =>
 									intercon_peripheral <= PERIPHERAL_INTERCON;
 								when others => -- Invalid address - delegated to the error peripheral
@@ -245,8 +210,7 @@ begin
 
 	processor_intercon: process(intercon_peripheral,
 		timer0_ack_out, timer0_dat_out, timer1_ack_out, timer1_dat_out,
-		uart0_ack_out, uart0_dat_out,-- uart1_ack_out, uart1_dat_out,
---		gpio_ack_out, gpio_dat_out,
+		uart0_ack_out, uart0_dat_out,
 		intercon_ack_out, intercon_dat_out, error_ack_out,
 		aee_rom_ack_out, aee_rom_dat_out, aee_ram_ack_out, aee_ram_dat_out,
 		main_memory_ack_out, main_memory_dat_out)
@@ -261,12 +225,6 @@ begin
 			when PERIPHERAL_UART0 =>
 				processor_ack_in <= uart0_ack_out;
 				processor_dat_in <= x"000000" & uart0_dat_out;
---			when PERIPHERAL_UART1 =>
---				processor_ack_in <= uart1_ack_out;
---				processor_dat_in <= x"000000" & uart1_dat_out;
---			when PERIPHERAL_GPIO =>
---				processor_ack_in <= gpio_ack_out;
---				processor_dat_in <= gpio_dat_out;
 			when PERIPHERAL_INTERCON =>
 				processor_ack_in <= intercon_ack_out;
 				processor_dat_in <= intercon_dat_out;
@@ -290,19 +248,11 @@ begin
 
 	reset_controller: entity work.pp_soc_reset
 		port map(
-			clk => clk,
+			--clk => clk,
 			reset_n => reset_n,
 			reset_out => reset,
 			system_clk => system_clk,
 			system_clk_locked => system_clk_locked
-		);
-
-	clkgen: entity work.clock_generator
-		port map(
-			clk => clk,
-			resetn => reset_n,
-			system_clk => system_clk,
-			locked => system_clk_locked
 		);
 
 	processor: entity work.pp_novacore
@@ -362,27 +312,6 @@ begin
 	timer1_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_TIMER1 else '0';
 	timer1_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_TIMER1 else '0';
 
---	gpio: entity work.pp_soc_gpio
---		generic map(
---			NUM_GPIOS => gpio_pins'high + 1
---		) port map(
---			clk => system_clk,
---			reset => reset,
---			gpio => gpio_pins,
---			wb_adr_in => gpio_adr_in,
---			wb_dat_in => gpio_dat_in,
---			wb_dat_out => gpio_dat_out,
---			wb_cyc_in => gpio_cyc_in,
---			wb_stb_in => gpio_stb_in,
---			wb_we_in => gpio_we_in,
---			wb_ack_out => gpio_ack_out
---		);
---	gpio_adr_in <= processor_adr_out(gpio_adr_in'range);
---	gpio_dat_in <= processor_dat_out;
---	gpio_we_in  <= processor_we_out;
---	gpio_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_GPIO else '0';
---	gpio_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_GPIO else '0';
-
 	uart0: entity work.pp_soc_uart
 		generic map(
 			FIFO_DEPTH => 32
@@ -405,29 +334,6 @@ begin
 	uart0_we_in  <= processor_we_out;
 	uart0_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_UART0 else '0';
 	uart0_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_UART0 else '0';
-
---	uart1: entity work.pp_soc_uart
---		generic map(
---			FIFO_DEPTH => 32
---		) port map(
---			clk => system_clk,
---			reset => reset,
---			txd => uart1_txd,
---			rxd => uart1_rxd,
---			irq => uart1_irq,
---			wb_adr_in => uart1_adr_in,
---			wb_dat_in => uart1_dat_in,
---			wb_dat_out => uart1_dat_out,
---			wb_cyc_in => uart1_cyc_in,
---			wb_stb_in => uart1_stb_in,
---			wb_we_in => uart1_we_in,
---			wb_ack_out => uart1_ack_out
---		);
---	uart1_adr_in <= processor_adr_out(uart1_adr_in'range);
---	uart1_dat_in <= processor_dat_out(7 downto 0);
---	uart1_we_in  <= processor_we_out;
---	uart1_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
---	uart1_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
 
 	intercon_error: entity work.pp_soc_intercon
 		port map(

@@ -68,18 +68,17 @@ package body pp_utilities is
 	begin
 		case size is
 			when b"01" =>
-				case address(1 downto 0) is
-					when b"00" =>
-						return b"0001";
-					when b"01" =>
-						return b"0010";
-					when b"10" =>
-						return b"0100";
-					when b"11" =>
-						return b"1000";
-					when others =>
-						return b"0001";
-				end case;
+				if address(1 downto 0) = "00" then
+                    return "0001";
+                elsif address(1 downto 0) = "01" then
+                    return "0010";
+                elsif address(1 downto 0) = "10" then
+                    return "0100";
+                elsif address(1 downto 0) = "11" then
+                    return "1000";
+                else
+                    return "0001"; -- Default case, handling 'others' scenario
+                end if;
 			when b"10" =>
 				if address(1) = '0' then
 					return b"0011";
