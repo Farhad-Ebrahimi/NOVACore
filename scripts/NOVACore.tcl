@@ -63,16 +63,13 @@ if { $::argc > 0 } {
 }
 
 # Create project
-create_project ${_xil_proj_name_} $origin_dir/../build/${_xil_proj_name_} -part xc7z020clg400-1 -force
+create_project ${_xil_proj_name_} $origin_dir/../build/${_xil_proj_name_} -part xczu3eg-sbva484-1-i -force
 
 # Set the directory path for the new project
 set proj_dir [get_property directory [current_project]]
 
-# Reconstruct message rules
-# None
-
 # Set project properties
-set_property -name "board_part" -value "digilentinc.com:zybo-z7-20:part0:1.2" -objects [current_project]
+set_property -name "board_part" -value "avnet.com:ultra96v2:part0:1.2" -objects [current_project]
 set_property -name "simulator_language" -value "Mixed" -objects [current_project]
 set_property -name "target_language" -value "VHDL" -objects [current_project]
 
@@ -132,6 +129,13 @@ set files [list \
 ]
 add_files -fileset sources_1 $files
 
+# Creat Block Design
+source ${origin_dir}/block_design.tcl
+# Make wrapper for the block design
+set wrapper_path [make_wrapper -fileset sources_1 -files [ get_files -norecurse zynq.bd] -top]
+add_files -norecurse -fileset sources_1 $wrapper_path
+
+
 # Create 'constrs_1' fileset (if not found)
 if {[string equal [get_filesets -quiet constrs_1] ""]} {
   create_fileset -constrset constrs_1
@@ -141,7 +145,7 @@ if {[string equal [get_filesets -quiet constrs_1] ""]} {
 # Add/Import constrs file and set constrs file properties
 
 set files [list \
- [file normalize "$origin_dir/../constraints/Zybo.xdc"]\
+ [file normalize "$origin_dir/../constraints/Ultra96_v2.xdc"]\
 ]
 add_files -fileset constrs_1 $files
 
@@ -150,19 +154,20 @@ if {[string equal [get_filesets -quiet sim_1] ""]} {
   create_fileset -simset sim_1
 }
 
-set_property -name "top" -value "toplevel" -objects [get_filesets sources_1]
-set_property -name "top" -value "topleve" -objects [get_filesets sim_1]
+set_property -name "top" -value "zynq_wrapper" -objects [get_filesets sources_1]
+set_property -name "top" -value "zynq_wrapper" -objects [get_filesets sim_1]
+
 set_property -name "top_auto_set" -value "0" -objects [get_filesets sources_1]
 set_property -name "top_auto_set" -value "0" -objects [get_filesets sim_1]
 
 # Create 'synth_1' run (if not found)
 if {[string equal [get_runs -quiet synth_1] ""]} {
-    create_run -name synth_1 -part xc7z020clg400-1 -flow {Vivado Synthesis 2023} -strategy "Flow_AlternateRoutability" -report_strategy {No Reports} -constrset constrs_1
+    create_run -name synth_1 -part xczu3eg-sbva484-1-i -flow {Vivado Synthesis 2023} -strategy "Flow_AlternateRoutability" -report_strategy {No Reports} -constrset constrs_1
 } else {
   set_property strategy "Flow_AlternateRoutability" [get_runs synth_1]
   set_property flow "Vivado Synthesis 2023" [get_runs synth_1]
 }
- #set_property -name "part" -value "xc7z020clg400-1" -objects [get_runs synth_1]
+ #set_property -name "part" -value "xczu3eg-sbva484-1-i" -objects [get_runs synth_1]
 
 set_property -name "strategy" -value "Flow_AlternateRoutability" -objects [get_runs synth_1]
 
@@ -172,7 +177,7 @@ current_run -synthesis [get_runs synth_1]
 
 # Create 'impl_1' run (if not found)
 if {[string equal [get_runs -quiet impl_1] ""]} {
-    create_run -name impl_1 -part xc7z020clg400-1 -flow {Vivado Implementation 2023} -strategy "Performance_ExplorePostRoutePhysOpt" -report_strategy {No Reports} -constrset constrs_1 -parent_run synth_1
+    create_run -name impl_1 -part xczu3eg-sbva484-1-i -flow {Vivado Implementation 2023} -strategy "Performance_ExplorePostRoutePhysOpt" -report_strategy {No Reports} -constrset constrs_1 -parent_run synth_1
 } else {
   set_property strategy "Performance_ExplorePostRoutePhysOpt" [get_runs impl_1]
   set_property flow "Vivado Implementation 2023" [get_runs impl_1]
