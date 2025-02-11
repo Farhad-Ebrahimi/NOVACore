@@ -10,57 +10,67 @@ use work.pp_constants.all;
 
 --! @brief Instruction fetch unit.
 entity pp_fetch is
-	generic(
-		RESET_ADDRESS : std_logic_vector(31 downto 0)
+	generic (
+		RESET_ADDRESS : STD_LOGIC_VECTOR(31 downto 0)
 	);
-	port(
-		clk    : in std_logic;
-		reset  : in std_logic;
+	port (
+		clk : in STD_LOGIC;
+		reset : in STD_LOGIC;
 
 		-- Instruction memory connections:
-		imem_address : out std_logic_vector(31 downto 0);
-		imem_data_in : in  std_logic_vector(31 downto 0);
-		imem_req     : out std_logic;
-		imem_ack     : in  std_logic;
+		imem_address : out STD_LOGIC_VECTOR(31 downto 0);
+		imem_data_in : in STD_LOGIC_VECTOR(31 downto 0);
+		imem_req : out STD_LOGIC;
+		imem_ack : in STD_LOGIC;
 
 		-- Control inputs:
-		stall     : in std_logic;
-		flush     : in std_logic;
-		branch    : in std_logic;
-		exception : in std_logic;
+		stall : in STD_LOGIC;
+		flush : in STD_LOGIC;
+		branch : in STD_LOGIC;
+		jump_inst_id : in STD_LOGIC;
+		jump_inst_ie : in STD_LOGIC;
+		exception : in STD_LOGIC;
 
-		branch_target : in std_logic_vector(31 downto 0);
-		evec          : in std_logic_vector(31 downto 0);
+		branch_target : in STD_LOGIC_VECTOR(31 downto 0);
+		pcid_bpu : in STD_LOGIC_VECTOR(31 downto 0);
+		pcie_bpu : in STD_LOGIC_VECTOR(31 downto 0);
+		evec : in STD_LOGIC_VECTOR(31 downto 0);
 
 		-- Outputs to the instruction decode unit:
-		instruction_data    : out std_logic_vector(31 downto 0);
-		instruction_address : out std_logic_vector(31 downto 0);
-		instruction_ready   : out std_logic
+		do_flush : out STD_LOGIC;
+		instruction_data : out STD_LOGIC_VECTOR(31 downto 0);
+		instruction_address : out STD_LOGIC_VECTOR(31 downto 0);
+		instruction_ready : out STD_LOGIC
 	);
 end entity pp_fetch;
 
 architecture behaviour of pp_fetch is
-	signal pc           : std_logic_vector(31 downto 0);
-	signal pc_next      : std_logic_vector(31 downto 0);
-	signal cancel_fetch : std_logic;
+	signal pc : STD_LOGIC_VECTOR(31 downto 0);
+	signal pc_next : STD_LOGIC_VECTOR(31 downto 0);
+	signal cancel_fetch : STD_LOGIC;
+	signal wrong_prediction : STD_LOGIC;
+	signal predicted_target : STD_LOGIC_VECTOR(31 downto 0);
 begin
 
-	imem_address <= pc_next when cancel_fetch = '0' else pc;
+	imem_address <= pc_next when cancel_fetch = '0' else
+		pc;
 
+	do_flush <= wrong_prediction;
+	
 	instruction_data <= imem_data_in;
 	instruction_ready <= imem_ack and (not stall) and (not cancel_fetch);
 	instruction_address <= pc;
 
 	imem_req <= not reset;
 
-	set_pc: process(clk)
+	set_pc : process (clk)
 	begin
 		if rising_edge(clk) then
 			if reset = '1' then
 				pc <= RESET_ADDRESS;
 				cancel_fetch <= '0';
 			else
-				if (exception = '1' or branch = '1') and imem_ack = '0' then
+				if (exception = '1' or wrong_prediction = '1') and imem_ack = '0' then
 					cancel_fetch <= '1';
 					pc <= pc_next;
 				elsif cancel_fetch = '1' and imem_ack = '1' then
@@ -72,17 +82,38 @@ begin
 		end if;
 	end process set_pc;
 
-	calc_next_pc: process(reset, stall, branch, exception, imem_ack, branch_target, evec, pc, cancel_fetch)
+	calc_next_pc : process (reset, stall, exception, imem_ack, evec, pc, cancel_fetch, wrong_prediction, predicted_target)
 	begin
 		if exception = '1' then
 			pc_next <= evec;
-		elsif branch = '1' then
-			pc_next <= branch_target;
+		elsif wrong_prediction = '1' then
+			pc_next <= predicted_target;
 		elsif imem_ack = '1' and stall = '0' and cancel_fetch = '0' then
-			pc_next <= std_logic_vector(unsigned(pc) + 4);
+			pc_next <= predicted_target;
 		else
 			pc_next <= pc;
 		end if;
 	end process calc_next_pc;
+
+	Branch_prediction_unit : entity work.bpu
+		generic map
+		(
+			INDEX_WIDTH => 7,
+			RESET_ADDRESS => RESET_ADDRESS
+		)
+		port map
+		(
+			clk => clk,
+			reset => reset,
+			jump_inst_id => jump_inst_id,
+			jump_inst_ie => jump_inst_ie,
+			actual_taken => branch,
+			actual_target => branch_target,
+			pc_if => pc,
+			pc_id => pcid_bpu,
+			pc_ie => pcie_bpu,
+			do_flush => wrong_prediction,
+			trg_addr_o => predicted_target
+		);
 
 end architecture behaviour;
