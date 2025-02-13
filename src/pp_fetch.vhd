@@ -98,8 +98,7 @@ begin
 	Branch_prediction_unit : entity work.bpu
 		generic map
 		(
-			INDEX_WIDTH => 7,
-			RESET_ADDRESS => RESET_ADDRESS
+			INDEX_WIDTH => 6
 		)
 		port map
 		(

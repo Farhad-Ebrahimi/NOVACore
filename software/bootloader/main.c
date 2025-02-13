@@ -25,10 +25,15 @@ int main(void)
 	uart_set_divisor(&uart0, uart_baud2divisor(115200, PLATFORM_SYSCLK_FREQ));
 
 	/* Print welcome message */
-	uart_tx_string(&uart0, "\n\r***************** NOVACore Bootloader - waiting for application image *****************\n\r");
-	uart_tx_string(&uart0, "\n\r** Usage: cat image.bin /dev/zero | head -c128k | pv -s 128k -L 14400 > /dev/ttyUSB1 **\n\r");
+	uart_tx_string(&uart0, "\n\n\r");
+	uart_tx_string(&uart0, " ************************************************************\n\r");
+	uart_tx_string(&uart0, " *  **  * ***** *   *  ***  ***** ***** ***** **** FAU|CS3  *\n\r");
+	uart_tx_string(&uart0, " *  * * * *   * *   * ***** *     *   * ****  ***           *\n\r");
+	uart_tx_string(&uart0, " *  *  ** *****  ***  *   * ***** ***** *  *  **** RV32-IM  *\n\r");
+	uart_tx_string(&uart0, " ****** Boot Successful!--> Waiting for an application ******\n\n\r");
 
 	/* Read application from UART and store it in RAM */
+	uart_tx_string(&uart0, " ");
 	for(int i = 0; i < APP_LEN; i++){
 		while(uart_rx_fifo_empty(&uart0));
 		*((volatile uint8_t*)(APP_START + i)) = uart_rx(&uart0);
@@ -39,7 +44,7 @@ int main(void)
 	}
 
 	/* Print booting message */
-	uart_tx_string(&uart0, "\n\rBooting ... \n\r");
+	uart_tx_string(&uart0, "\n\n\r Booting the application is in progress ... \n\n\r");
 
 	/* Jump in RAM */
 	goto *APP_ENTRY;

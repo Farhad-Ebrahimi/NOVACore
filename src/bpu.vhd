@@ -4,8 +4,7 @@ use IEEE.NUMERIC_STD.all;
 
 entity bpu is
     generic (
-        constant INDEX_WIDTH : integer := 6;
-        RESET_ADDRESS : std_logic_vector(31 downto 0) := (others => '0')
+        constant INDEX_WIDTH : integer := 6
     );
     port (
         clk : in std_logic;
@@ -27,7 +26,7 @@ architecture Behavioral of bpu is
 
     type btb_valid_array is array (0 to 2 ** INDEX_WIDTH - 1) of std_logic;
     type btb_taken_array is array (0 to 2 ** INDEX_WIDTH - 1) of std_logic;
-    type btb_tag_array is array (0 to 2 ** INDEX_WIDTH - 1) of std_logic_vector(31 - (INDEX_WIDTH) downto 0);
+    type btb_tag_array is array (0 to 2 ** INDEX_WIDTH - 1) of std_logic_vector(31 - (INDEX_WIDTH + 2) downto 0);
     type btb_target_array is array (0 to 2 ** INDEX_WIDTH - 1) of std_logic_vector(31 downto 0);
 
     signal btb_valid : btb_valid_array := (others => '0');
@@ -60,9 +59,9 @@ begin
 
     do_flush <= wrong_prdt;
 
-    index_if <= to_integer(unsigned(pc_if(INDEX_WIDTH - 1 downto 0)));
-    index_id <= to_integer(unsigned(pc_id(INDEX_WIDTH - 1 downto 0)));
-    index_ie <= to_integer(unsigned(pc_ie(INDEX_WIDTH - 1 downto 0)));
+    index_if <= to_integer(unsigned(pc_if(INDEX_WIDTH + 1  downto 2)));
+    index_id <= to_integer(unsigned(pc_id(INDEX_WIDTH + 1  downto 2)));
+    index_ie <= to_integer(unsigned(pc_ie(INDEX_WIDTH + 1  downto 2)));
 
     pcif_plus4 <= std_logic_vector(unsigned(pc_if) + 4);
     pcie_plus4 <= std_logic_vector(unsigned(pc_ie) + 4);
@@ -76,12 +75,12 @@ begin
                 end loop;
             else
                 if jump_inst_ie = '1' and wrong_prdt = '1' then
-                    if btb_valid(index_ie) = '1' and btb_tag(index_ie) = pc_ie(31 downto INDEX_WIDTH) then
+                    if btb_valid(index_ie) = '1' and btb_tag(index_ie) = pc_ie(31 downto INDEX_WIDTH + 2) then
                         btb_taken(index_ie) <= actual_taken;
                         btb_target(index_ie) <= actual_target;
                     else
                         btb_valid(index_ie) <= '1';
-                        btb_tag(index_ie) <= pc_ie(31 downto INDEX_WIDTH);
+                        btb_tag(index_ie) <= pc_ie(31 downto INDEX_WIDTH + 2);
                         btb_taken(index_ie) <= actual_taken;
                         btb_target(index_ie) <= actual_target;
                     end if;
@@ -99,7 +98,7 @@ begin
                 branch_history <= '0';
                 prdt_addr <= (others => '0');
                 if jump_inst_id = '1'and wrong_prdt = '0' then
-                    if btb_valid(index_id) = '1' and btb_tag(index_id) = pc_id(31 downto INDEX_WIDTH) then
+                    if btb_valid(index_id) = '1' and btb_tag(index_id) = pc_id(31 downto INDEX_WIDTH + 2) then
                         branch_history <= btb_taken(index_id);
                         prdt_addr <= btb_target(index_id);
                     end if;
@@ -117,7 +116,7 @@ begin
                 trg_addr_o <= pcie_plus4;
             end if;
         else
-            if btb_valid(index_if) = '1' and btb_tag(index_if) = pc_if(31 downto INDEX_WIDTH) and btb_taken(index_if) = '1' then
+            if btb_valid(index_if) = '1' and btb_tag(index_if) = pc_if(31 downto INDEX_WIDTH + 2) and btb_taken(index_if) = '1' then
                 trg_addr_o <= btb_target(index_if);
             else
                 trg_addr_o <= pcif_plus4;

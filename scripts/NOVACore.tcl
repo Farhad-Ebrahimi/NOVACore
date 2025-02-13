@@ -84,6 +84,7 @@ set obj [get_filesets sources_1]
 # Import local files from the original project
 set files [list \
  [file normalize "${origin_dir}/../src/aee_rom.vhd"]\
+ [file normalize "${origin_dir}/../src/bpu.vhd"]\
  [file normalize "${origin_dir}/../src/Bin2Ter.vhd"]\
  [file normalize "${origin_dir}/../src/mul_stg3.vhd"]\
  [file normalize "${origin_dir}/../src/CSD_Adder.vhd"]\

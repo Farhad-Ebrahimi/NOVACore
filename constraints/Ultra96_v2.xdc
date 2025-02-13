@@ -32,4 +32,9 @@ set_operating_conditions -heatsink low
 #set_property -dict {PACKAGE_PIN N2 IOSTANDARD LVCMOS12} [get_ports {uart1_rxd}]
 
 #rst_gpio led # "A9.RADIO_LED0"
-set_property -dict {PACKAGE_PIN A9 IOSTANDARD LVCMOS18} [get_ports {led}];  
+set_property -dict {PACKAGE_PIN A9 IOSTANDARD LVCMOS18} [get_ports led]
+
+
+create_pblock pblock_1
+add_cells_to_pblock [get_pblocks pblock_1] [get_cells -quiet [list zynq_i/NOVACore]]
+resize_pblock [get_pblocks pblock_1] -add {CLOCKREGION_X0Y2:CLOCKREGION_X1Y2}
