@@ -28,9 +28,9 @@ begin
         variable sync_2 : std_logic := '1';
     begin
         if rising_edge(system_clk) then
+            reset_sync <= sync_1;
             sync_1 := not reset_n;
-            sync_2 := sync_1;
-            reset_sync <= sync_2;
+            
         end if;
     end process;
 

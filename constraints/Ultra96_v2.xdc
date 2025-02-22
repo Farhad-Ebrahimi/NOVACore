@@ -35,6 +35,9 @@ set_operating_conditions -heatsink low
 set_property -dict {PACKAGE_PIN A9 IOSTANDARD LVCMOS18} [get_ports led]
 
 
+
+
+
 create_pblock pblock_1
 add_cells_to_pblock [get_pblocks pblock_1] [get_cells -quiet [list zynq_i/NOVACore]]
-resize_pblock [get_pblocks pblock_1] -add {CLOCKREGION_X0Y2:CLOCKREGION_X1Y2}
+resize_pblock [get_pblocks pblock_1] -add {CLOCKREGION_X0Y0:CLOCKREGION_X1Y0}

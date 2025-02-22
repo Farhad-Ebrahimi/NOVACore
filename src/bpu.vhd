@@ -50,6 +50,7 @@ architecture Behavioral of bpu is
     attribute ram_style of btb_target : signal is "block";
 
     shared variable next_address : std_logic_vector(31 downto 0);
+    shared variable next_history : std_logic;
 
 begin
 
@@ -84,6 +85,9 @@ begin
                         btb_taken(index_ie) <= actual_taken;
                         btb_target(index_ie) <= actual_target;
                     end if;
+                else
+                    next_address:= btb_target(index_if);
+                    next_history:= btb_taken(index_if);
                 end if;
             end if;
         end if;
@@ -107,7 +111,7 @@ begin
         end if;
     end process BHT_check;
 
-    Making_prediction : process (pc_if, pcif_plus4, btb_valid, btb_tag, btb_taken, btb_target, wrong_prdt, actual_target)
+    Making_prediction : process (pc_if, pcif_plus4, btb_valid, btb_tag, wrong_prdt, actual_target,actual_taken,pcie_plus4,index_if)
     begin
         if wrong_prdt = '1' then
             if actual_taken = '1' then
@@ -116,8 +120,8 @@ begin
                 trg_addr_o <= pcie_plus4;
             end if;
         else
-            if btb_valid(index_if) = '1' and btb_tag(index_if) = pc_if(31 downto INDEX_WIDTH + 2) and btb_taken(index_if) = '1' then
-                trg_addr_o <= btb_target(index_if);
+            if btb_valid(index_if) = '1' and btb_tag(index_if) = pc_if(31 downto INDEX_WIDTH + 2) and next_history = '1' then
+                trg_addr_o <= next_address;
             else
                 trg_addr_o <= pcif_plus4;
             end if;

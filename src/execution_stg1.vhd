@@ -403,7 +403,7 @@ begin
       yd => x_data_out(31 downto 0)
     );
 
-  mulhu_x : process (alu_op, alu_x)
+  mulhu_x : process (alu_op, alu_x,alu_y)
   begin
     x_sign_out(32) <= '0';
     x_data_out(32) <= '0';
