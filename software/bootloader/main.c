@@ -8,7 +8,7 @@
 #include "uart.h"
 
 #define APP_START (0x00000000)
-#define APP_LEN   (0x20000)
+#define APP_LEN   (0x02000)
 #define APP_ENTRY (0x00000000)
 
 static struct uart uart0;

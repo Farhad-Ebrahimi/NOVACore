@@ -10,7 +10,7 @@ TARGET_SIZE := $(TARGET_PREFIX)-size
 TARGET_OBJCOPY := $(TARGET_PREFIX)-objcopy
 HEXDUMP ?= hexdump
 
-TARGET_CFLAGS +=  -march=rv32im_zicsr -mno-div -Wall -O1 -fomit-frame-pointer \
+TARGET_CFLAGS +=  -march=rv32im_zicsr -mno-div -Wall -Os -fomit-frame-pointer \
 	-ffreestanding -fno-builtin -fanalyzer -I../.. -I../../libsoc -std=gnu99 \
 	-Wall -Werror=implicit-function-declaration -ffunction-sections -fdata-sections
 TARGET_LDFLAGS += -march=rv32im_zicsr -mno-div -nostartfiles -L../libsoc \

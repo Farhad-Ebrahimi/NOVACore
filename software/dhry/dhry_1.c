@@ -14,11 +14,6 @@
  *
  ****************************************************************************
  */
- 
-// The NOVACore - A 7-stage in-order RISC-V processor for FPGAs
-// (c) Farhad EbrahimiAzandaryani 2023-2024 <farhad.ebrahimiazandaryani@fau.de>
-// Demonstration : https://www.cs3.tf.fau.de/nova-core-2/
-
 #include <string.h>
 #include "dhry.h"
 
@@ -80,7 +75,7 @@ static volatile bool reset_counter = false;
 
 // Converts a/an char/integer to a string:
 void char2string(char c, char *s);
-static void int2string(int i, char *s);
+__attribute__((optimize("O1"))) static void int2string(int i, char *s);
 // Converts an unsigned 32 bit integer to a hexadecimal string:
 static void int2hex32(uint32_t i, char *s);
 

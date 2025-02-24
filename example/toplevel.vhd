@@ -13,7 +13,7 @@ use ieee.std_logic_1164.all;
 
 -- This is a SoC design for the Arty development board. It has the following memory layout:
 --
--- 0x00000000: Main memory (128 kB)
+-- 0x00000000: Main memory (8 kB)
 -- 0xc0000000: Timer0
 -- 0xc0001000: Timer1
 -- 0xc0002000: UART0 (for host communication)
@@ -128,8 +128,8 @@ architecture behaviour of toplevel is
 	signal aee_ram_ack_out : std_logic;
 
 	-- Main memory signals:
-	signal main_memory_adr_in  : std_logic_vector(16 downto 0);
-	signal main_memory_dat_in  : std_logic_vector(31 downto 0);
+	signal main_memory_adr_in : std_logic_vector(12 downto 0);
+	signal main_memory_dat_in : std_logic_vector(31 downto 0);
 	signal main_memory_dat_out : std_logic_vector(31 downto 0);
 	signal main_memory_cyc_in  : std_logic;
 	signal main_memory_stb_in  : std_logic;
@@ -407,20 +407,18 @@ begin
 	aee_ram_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_AEE_RAM else '0';
 	aee_ram_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_AEE_RAM else '0';
 
-	main_memory: entity work.pp_soc_memory
-		generic map(
-			MEMORY_SIZE => 131072
-		) port map(
+	main_memory_instance : entity work.main_memory_wrapper
+		port map(
 			clk => system_clk,
-			reset => reset,
-			wb_adr_in => main_memory_adr_in,
-			wb_dat_in => main_memory_dat_in,
-			wb_dat_out => main_memory_dat_out,
-			wb_cyc_in => main_memory_cyc_in,
-			wb_stb_in => main_memory_stb_in,
-			wb_sel_in => main_memory_sel_in,
-			wb_we_in => main_memory_we_in,
-			wb_ack_out => main_memory_ack_out
+			rst => reset,
+			addr => main_memory_adr_in,
+			din => main_memory_dat_in,
+			dout => main_memory_dat_out,
+			csb => main_memory_cyc_in,
+			stb => main_memory_stb_in,
+			wmask => main_memory_sel_in,
+			web => main_memory_we_in,
+			ack_out => main_memory_ack_out
 		);
 	main_memory_adr_in <= processor_adr_out(main_memory_adr_in'range);
 	main_memory_dat_in <= processor_dat_out;
