@@ -118,7 +118,7 @@ architecture behaviour of toplevel is
 	signal aee_rom_ack_out : std_logic;
 
 	-- AEE RAM signals:
-	signal aee_ram_adr_in  : std_logic_vector(13 downto 0);
+	signal aee_ram_adr_in  : std_logic_vector(10 downto 0);
 	signal aee_ram_dat_in  : std_logic_vector(31 downto 0);
 	signal aee_ram_dat_out : std_logic_vector(31 downto 0);
 	signal aee_ram_cyc_in  : std_logic;
@@ -385,20 +385,18 @@ begin
 	aee_rom_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_AEE_ROM else '0';
 	aee_rom_sel_in <= processor_sel_out;
 
-	aee_ram: entity work.pp_soc_memory
-		generic map(
-			MEMORY_SIZE => 16384
-		) port map(
+	aee_ram_instance : entity work.aee_ram_wrapper
+		port map(
 			clk => system_clk,
-			reset => reset,
-			wb_adr_in => aee_ram_adr_in,
-			wb_dat_in => aee_ram_dat_in,
-			wb_dat_out => aee_ram_dat_out,
-			wb_cyc_in => aee_ram_cyc_in,
-			wb_stb_in => aee_ram_stb_in,
-			wb_sel_in => aee_ram_sel_in,
-			wb_we_in => aee_ram_we_in,
-			wb_ack_out => aee_ram_ack_out
+			rst => reset,
+			addr => aee_ram_adr_in,
+			din => aee_ram_dat_in,
+			dout => aee_ram_dat_out,
+			csb => aee_ram_cyc_in,
+			stb => aee_ram_stb_in,
+			wmask => aee_ram_sel_in,
+			web => aee_ram_we_in,
+			ack_out => aee_ram_ack_out
 		);
 	aee_ram_adr_in <= processor_adr_out(aee_ram_adr_in'range);
 	aee_ram_dat_in <= processor_dat_out;
