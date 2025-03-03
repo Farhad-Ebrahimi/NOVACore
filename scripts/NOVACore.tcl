@@ -118,7 +118,7 @@ set files [list \
  [file normalize "${origin_dir}/../src/execution_stg1.vhd"]\
  [file normalize "${origin_dir}/../src/execution_stg2.vhd"]\
  [file normalize "${origin_dir}/../src/execution_stg3.vhd"]\
- [file normalize "${origin_dir}/../example/aee_rom_wrapper.vhd"]\
+ [file normalize "${origin_dir}/../example/fsbl_rom_wrapper.vhd"]\
  [file normalize "${origin_dir}/../example/toplevel.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_fifo.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_soc_gpio.vhd"]\
@@ -127,6 +127,7 @@ set files [list \
  [file normalize "${origin_dir}/../soc/pp_soc_reset.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_soc_timer.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_soc_uart.vhd"]\
+ [file normalize "${origin_dir}/../src/SRAM-Sky130nm/sram_wrapper_ssbl_ram.vhd"]\
  [file normalize "${origin_dir}/../src/SRAM-Sky130nm/sram_wrapper_aee_ram.vhd"]\
  [file normalize "${origin_dir}/../src/SRAM-Sky130nm/sram_wrapper_main_memory.vhd"]\
  [file normalize "${origin_dir}/../src/SRAM-Sky130nm/sky130_sram_1kbyte_1rw1r_32x256_8.v"]\

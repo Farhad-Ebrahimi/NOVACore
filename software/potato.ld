@@ -7,7 +7,7 @@ ENTRY(_start)
 
 MEMORY
 {
-	RAM (rwx)    : ORIGIN = 0x00000000, LENGTH = 0x00020000
+	RAM (rwx)    : ORIGIN = 0x00000000, LENGTH = 0x00002000
 }
 
 SECTIONS
@@ -45,7 +45,7 @@ SECTIONS
 	} > RAM
 
 	/* Set the start of the stack to the top of RAM: */
-	__stack_top = 0x00020000;
+	__stack_top = 0x00002000;
 
 	/DISCARD/ :
 	{

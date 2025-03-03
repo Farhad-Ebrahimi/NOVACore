@@ -8,9 +8,9 @@ use ieee.numeric_std.all;
 
 use work.pp_utilities.all;
 
-entity aee_rom_wrapper is
+entity fsbl_rom_wrapper is
 	generic(
-		MEMORY_SIZE : natural := 4096 --! Memory size in bytes.
+		MEMORY_SIZE : natural := 1024 --! Memory size in bytes.
 	);
 	port(
 		clk   : in std_logic;
@@ -24,9 +24,9 @@ entity aee_rom_wrapper is
 		wb_sel_in  : in  std_logic_vector(3 downto 0);
 		wb_ack_out : out std_logic
 	);
-end entity aee_rom_wrapper;
+end entity fsbl_rom_wrapper;
 
-architecture behaviour of aee_rom_wrapper is
+architecture behaviour of fsbl_rom_wrapper is
 	signal ack : std_logic;
 
 	signal read_data : std_logic_vector(31 downto 0);
@@ -34,7 +34,7 @@ architecture behaviour of aee_rom_wrapper is
 
 begin
 
-	rom: entity work.aee_rom
+	rom: entity work.fsbl_rom
 		port map(
 			clka => clk,
 			addra => wb_adr_in(log2(MEMORY_SIZE) - 1 downto 2),

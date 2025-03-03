@@ -5,23 +5,23 @@
 .PHONY: all clean
 include ../common.mk
 
-TARGET_LDFLAGS += -Wl,-Tbootloader.ld -Wl,--Map,bootloader.map
+TARGET_LDFLAGS += -Wl,-Tssbl.ld -Wl,--Map,ssbl.map
 
-OBJECTS := main.o start.o
+OBJECTS := ssbl.o start.o
 
-all: bootloader.elf bootloader.bin bootloader.coe
+all: ssbl.elf ssbl.bin ssbl.coe
 
-bootloader.elf: $(OBJECTS)
-	$(TARGET_LD) -o bootloader.elf $(TARGET_LDFLAGS) $(OBJECTS)
-	$(TARGET_SIZE) bootloader.elf
+ssbl.elf: $(OBJECTS)
+	$(TARGET_LD) -o ssbl.elf $(TARGET_LDFLAGS) $(OBJECTS)
+	$(TARGET_SIZE) ssbl.elf
 
 clean:
 	-$(RM) $(OBJECTS)
-	-$(RM) bootloader.elf bootloader.bin bootloader.coe
+	-$(RM) ssbl.elf ssbl.bin ssbl.coe ssbl.map
 
 # Object file rules:
 
-main.o: main.c ../../potato.h
+ssbl.o: ssbl.c ../../potato.h
 	$(TARGET_CC) -c -o $@ $(TARGET_CFLAGS) $<
 
 start.o: ../start.S

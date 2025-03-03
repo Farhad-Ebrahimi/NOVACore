@@ -6,7 +6,7 @@
 
 int main() {
     FILE *file;
-    char filename[100]="bootloader.coe";
+    char filename[100]="ssbl.coe";
     char line[100];
     char formatted_output[MAX_LINES][24];  // Store formatted VHDL output
     int line_count = 0;
