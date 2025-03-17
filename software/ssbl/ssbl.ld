@@ -9,7 +9,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    SSBL_RAM (rwx)  : ORIGIN = 0xffff8400, LENGTH = 0x00000800 /* 2 KB SSBL RAM */
+    SSBL_RAM (rwx)  : ORIGIN = 0xffff8404, LENGTH = 0x000007FC /* 2044 B SSBL RAM */
 }
 
 SECTIONS

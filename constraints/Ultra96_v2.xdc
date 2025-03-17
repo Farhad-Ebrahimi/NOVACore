@@ -28,8 +28,8 @@ set_operating_conditions -heatsink low
 #set_property -dict {PACKAGE_PIN F8 IOSTANDARD LVCMOS18} [get_ports uart0_rxd]
 
 # UART1 (pin 5 and 6 on JA, to match the pins on the PMOD-GPS):
-#set_property -dict {PACKAGE_PIN P1 IOSTANDARD LVCMOS12} [get_ports {uart1_txd}]
-#set_property -dict {PACKAGE_PIN N2 IOSTANDARD LVCMOS12} [get_ports {uart1_rxd}]
+set_property -dict {PACKAGE_PIN P1 IOSTANDARD LVCMOS12} [get_ports {uart1_txd}]
+set_property -dict {PACKAGE_PIN N2 IOSTANDARD LVCMOS12} [get_ports {uart1_rxd}]
 
 #rst_gpio led # "A9.RADIO_LED0"
 set_property -dict {PACKAGE_PIN A9 IOSTANDARD LVCMOS18} [get_ports led]

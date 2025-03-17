@@ -11,7 +11,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
--- This is a SoC design for the Arty development board. It has the following memory layout:
+-- NOVACore has the following memory layout:
 --
 -- 0x00000000: Main memory (8 kB)
 -- 0xc0000000: Timer0
@@ -23,6 +23,7 @@ use ieee.std_logic_1164.all;
 -- 0xffff8000: Application execution environment FSBL ROM (1 kB)
 -- 0xffff8400: Application execution environment SSBL RAM (2 kB)
 -- 0xffff8c00: Application execution environment RAM (2 kB)
+
 entity toplevel is
 	port(
 		system_clk : in  std_logic;
@@ -31,8 +32,12 @@ entity toplevel is
 
 		-- UART0 signals:
 		uart0_txd : out std_logic;
-		uart0_rxd : in  std_logic
-	);
+		uart0_rxd : in  std_logic;
+
+		-- UART1 signals:
+		uart1_txd : out std_logic;
+		uart1_rxd : in  std_logic
+);
 end entity toplevel;
 
 architecture behaviour of toplevel is
@@ -44,14 +49,13 @@ architecture behaviour of toplevel is
 	constant IRQ_TIMER0_INDEX    : natural := 0;
 	constant IRQ_TIMER1_INDEX    : natural := 1;
 	constant IRQ_UART0_INDEX     : natural := 2;
---	constant IRQ_UART1_INDEX     : natural := 3;
+	constant IRQ_UART1_INDEX     : natural := 3;
 	constant IRQ_BUS_ERROR_INDEX : natural := 4;
 
 	-- Interrupt signals:
 	signal irq_array : std_logic_vector(7 downto 0);
 	signal timer0_irq, timer1_irq : std_logic;
-	signal uart0_irq              : std_logic;
---	signal uart0_irq, uart1_irq   : std_logic;
+	signal uart0_irq, uart1_irq   : std_logic;
 	signal intercon_irq_bus_error : std_logic;
 
 	-- Processor signals:
@@ -90,6 +94,15 @@ architecture behaviour of toplevel is
 	signal uart0_stb_in  : std_logic;
 	signal uart0_we_in   : std_logic;
 	signal uart0_ack_out : std_logic;
+
+	-- UART1 signals:
+	signal uart1_adr_in  : std_logic_vector(11 downto 0);
+	signal uart1_dat_in  : std_logic_vector( 7 downto 0);
+	signal uart1_dat_out : std_logic_vector( 7 downto 0);
+	signal uart1_cyc_in  : std_logic;
+	signal uart1_stb_in  : std_logic;
+	signal uart1_we_in   : std_logic;
+	signal uart1_ack_out : std_logic;
 
 	-- Interconnect control module:
 	signal intercon_adr_in  : std_logic_vector(11 downto 0);
@@ -151,7 +164,7 @@ architecture behaviour of toplevel is
 	-- Selected peripheral on the interconnect:
 	type intercon_peripheral_type is (
 		PERIPHERAL_TIMER0, PERIPHERAL_TIMER1,
-		PERIPHERAL_UART0,PERIPHERAL_SSBL_RAM,
+		PERIPHERAL_UART0,PERIPHERAL_UART1,PERIPHERAL_SSBL_RAM,
 		PERIPHERAL_FSBL_ROM, PERIPHERAL_AEE_RAM, PERIPHERAL_INTERCON,
 		PERIPHERAL_MAIN_MEMORY, PERIPHERAL_ERROR, PERIPHERAL_NONE);
 	signal intercon_peripheral : intercon_peripheral_type := PERIPHERAL_NONE;
@@ -165,7 +178,7 @@ begin
 			IRQ_TIMER0_INDEX => timer0_irq,
 			IRQ_TIMER1_INDEX => timer1_irq,
 			IRQ_UART0_INDEX => uart0_irq,
-			--IRQ_UART1_INDEX => 0,
+			IRQ_UART1_INDEX => uart1_irq,
 			IRQ_BUS_ERROR_INDEX => intercon_irq_bus_error,
 			others => '0'
 		);
@@ -191,6 +204,8 @@ begin
 									intercon_peripheral <= PERIPHERAL_TIMER1;
 								when x"2" =>
 									intercon_peripheral <= PERIPHERAL_UART0;
+								when x"3" =>
+									intercon_peripheral <= PERIPHERAL_UART1;
 								when x"5" =>
 									intercon_peripheral <= PERIPHERAL_INTERCON;
 								when others => -- Invalid address - delegated to the error peripheral
@@ -225,7 +240,7 @@ begin
 
 	processor_intercon: process(intercon_peripheral,
 		timer0_ack_out, timer0_dat_out, timer1_ack_out, timer1_dat_out,
-		uart0_ack_out, uart0_dat_out,
+		uart0_ack_out, uart0_dat_out, uart1_ack_out, uart1_dat_out,
 		intercon_ack_out, intercon_dat_out, error_ack_out,
 		fsbl_rom_ack_out, fsbl_rom_dat_out, aee_ram_ack_out, aee_ram_dat_out,
 		main_memory_ack_out, main_memory_dat_out)
@@ -240,6 +255,9 @@ begin
 			when PERIPHERAL_UART0 =>
 				processor_ack_in <= uart0_ack_out;
 				processor_dat_in <= x"000000" & uart0_dat_out;
+			when PERIPHERAL_UART1 =>
+				processor_ack_in <= uart1_ack_out;
+				processor_dat_in <= x"000000" & uart1_dat_out;
 			when PERIPHERAL_INTERCON =>
 				processor_ack_in <= intercon_ack_out;
 				processor_dat_in <= intercon_dat_out;
@@ -352,6 +370,31 @@ begin
 	uart0_we_in  <= processor_we_out;
 	uart0_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_UART0 else '0';
 	uart0_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_UART0 else '0';
+
+	uart1: entity work.pp_soc_uart
+
+	generic map(
+		FIFO_DEPTH => 32
+	) port map(
+		clk => system_clk,
+		reset => reset,
+		txd => uart1_txd,
+		rxd => uart1_rxd,
+		irq => uart1_irq,
+		wb_adr_in => uart1_adr_in,
+		wb_dat_in => uart1_dat_in,
+		wb_dat_out => uart1_dat_out,
+		wb_cyc_in => uart1_cyc_in,
+		wb_stb_in => uart1_stb_in,
+		wb_we_in => uart1_we_in,
+		wb_ack_out => uart1_ack_out
+	);
+
+	uart1_adr_in <= processor_adr_out(uart1_adr_in'range);
+	uart1_dat_in <= processor_dat_out(7 downto 0);
+	uart1_we_in  <= processor_we_out;
+	uart1_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
+	uart1_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
 
 	intercon_error: entity work.pp_soc_intercon
 		port map(
