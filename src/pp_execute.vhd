@@ -103,6 +103,7 @@ entity pp_execute is
     jump_out : out STD_LOGIC;
     jump_inst : out STD_LOGIC;
     pcie_bpu : out STD_LOGIC_VECTOR(31 downto 0);
+    branch_result : out std_logic;
     jump_target_out : out STD_LOGIC_VECTOR(31 downto 0);
 
     -- Inputs to the forwarding logic from the MEM stage:
@@ -140,7 +141,7 @@ architecture behaviour of pp_execute is
   signal load_hazard_detected, csr_hazard_detected : STD_LOGIC;
 
   signal rs1_forwarded, rs2_forwarded : STD_LOGIC_VECTOR(31 downto 0);
-
+  signal rs1_forwarded_reg, rs2_forwarded_reg : STD_LOGIC_VECTOR(31 downto 0);
   signal csd_instruction_hazard : STD_LOGIC;
 
   signal mem_op_to_hazard_stg3 : memory_operation_type;
@@ -175,7 +176,7 @@ architecture behaviour of pp_execute is
 
   -- Control signals:
   signal alu_op_to_stg2 : alu_operation;
-  signal rd_write_to_stg2 : STD_LOGIC;
+  signal rd_write_to_stg2 : std_logic;
   signal branch_to_stg2 : branch_type;
 
   -- Memory control signals:
@@ -268,12 +269,9 @@ begin
         rs2_addr <= rs2_addr_in;
         alu_x_src <= alu_x_src_in;
         alu_y_src <= alu_y_src_in;
+--        rs1_forwarded_reg <= rs1_forwarded;
+--        rs2_forwarded_reg <= rs2_forwarded;
       end if;
-
-      -- if stall_exe_stg2 = '0' then
-      --rd_data_to_forwarding <= rd_data_to_stg2;
-      -- end if;
-
     end if;
   end process update_address;
 
@@ -373,6 +371,7 @@ begin
       -- Control outputs:
       jump_out => jump_out,
       jump_inst => jump_inst,
+      branch_result=> branch_result,
       jump_target_out => jump_target_out
     );
 
@@ -586,107 +585,120 @@ begin
       exception_context_out => exception_context_out
 
     );
-
- alu_x_forward : process (rd_write_to_stg3, rd_addr_to_stg3, rs1_addr, bw_alu_result_to_stg3, rd_write_to_forwarding_stg3, rd_addr_to_forwarding_stg3, bw_to_forwarding_stg3,
- mem_rd_write, mem_rd_addr, mem_rd_value, wb_rd_write, wb_rd_addr, wb_rd_value, rs1_data)
+  alu_x_forward : process (
+    --stall_exe_stg1,
+    alu_op_to_stg3, alu_op_to_forwarding_stg3,
+    rd_write_to_stg3, rd_addr_to_stg3,
+    rs1_addr, bw_alu_result_to_stg3,
+    rd_write_to_forwarding_stg3, rd_addr_to_forwarding_stg3, bw_to_forwarding_stg3,
+    mem_rd_write, mem_rd_addr, mem_rd_value,
+    wb_rd_write, wb_rd_addr, wb_rd_value,
+    rs1_data
+    )
   begin
-    if rd_write_to_stg3 = '1' and rd_addr_to_stg3 = rs1_addr and rd_addr_to_stg3 /= b"00000" then
-      rs1_forwarded <= bw_alu_result_to_stg3;
-    elsif rd_write_to_forwarding_stg3 = '1' and rd_addr_to_forwarding_stg3 = rs1_addr and rd_addr_to_forwarding_stg3 /= b"00000" then
-      rs1_forwarded <= bw_to_forwarding_stg3;
-    elsif mem_rd_write = '1' and mem_rd_addr = rs1_addr and mem_rd_addr /= b"00000" then
-      rs1_forwarded <= mem_rd_value;
-    elsif wb_rd_write = '1' and wb_rd_addr = rs1_addr and wb_rd_addr /= b"00000" then
-      rs1_forwarded <= wb_rd_value;
-    else
-      rs1_forwarded <= rs1_data;
-    end if;
+    --if (stall_exe_stg1 ='0') then
+        if rd_write_to_stg3 = '1' and rd_addr_to_stg3 = rs1_addr and rd_addr_to_stg3 /= b"00000" and (not is_csd_op(alu_op_to_stg3)) then
+          rs1_forwarded <= bw_alu_result_to_stg3;
+        elsif rd_write_to_forwarding_stg3 = '1' and rd_addr_to_forwarding_stg3 = rs1_addr and rd_addr_to_forwarding_stg3 /= b"00000" and (not is_csd_op(alu_op_to_forwarding_stg3)) then
+          rs1_forwarded <= bw_to_forwarding_stg3;
+        elsif mem_rd_write = '1' and mem_rd_addr = rs1_addr and mem_rd_addr /= b"00000" then
+          rs1_forwarded <= mem_rd_value;
+        elsif wb_rd_write = '1' and wb_rd_addr = rs1_addr and wb_rd_addr /= b"00000" then
+          rs1_forwarded <= wb_rd_value;
+        else
+          rs1_forwarded <= rs1_data;
+        end if;
+--    else
+--        rs1_forwarded <= rs1_forwarded_reg;
+--    end if;
   end process alu_x_forward;
 
-alu_y_forward : process (rd_write_to_stg3, rd_addr_to_stg3, rs2_addr, bw_alu_result_to_stg3, rd_write_to_forwarding_stg3, rd_addr_to_forwarding_stg3, bw_to_forwarding_stg3,
-mem_rd_write, mem_rd_addr, mem_rd_value, wb_rd_write, wb_rd_addr, wb_rd_value, rs2_data)
+   alu_y_forward : process (
+--   stall_exe_stg1,
+   alu_op_to_stg3, alu_op_to_forwarding_stg3,
+   rd_write_to_stg3, rd_addr_to_stg3, rs2_addr, 
+   bw_alu_result_to_stg3, rd_write_to_forwarding_stg3, 
+   rd_addr_to_forwarding_stg3, bw_to_forwarding_stg3, 
+   mem_rd_write, mem_rd_addr, mem_rd_value, wb_rd_write, 
+   wb_rd_addr, wb_rd_value, rs2_data)
  begin
-   if rd_write_to_stg3 = '1' and rd_addr_to_stg3 = rs2_addr and rd_addr_to_stg3 /= b"00000" then
-     rs2_forwarded <= bw_alu_result_to_stg3;
-   elsif rd_write_to_forwarding_stg3 = '1' and rd_addr_to_forwarding_stg3 = rs2_addr and rd_addr_to_forwarding_stg3 /= b"00000" then
-     rs2_forwarded <= bw_to_forwarding_stg3;
-   elsif mem_rd_write = '1' and mem_rd_addr = rs2_addr and mem_rd_addr /= b"00000" then
-     rs2_forwarded <= mem_rd_value;
-   elsif wb_rd_write = '1' and wb_rd_addr = rs2_addr and wb_rd_addr /= b"00000" then
-     rs2_forwarded <= wb_rd_value;
-   else
-     rs2_forwarded <= rs2_data;
-   end if;
+     --if (stall_exe_stg1 ='0') then
+        if rd_write_to_stg3 = '1' and rd_addr_to_stg3 = rs2_addr and rd_addr_to_stg3 /= b"00000" and (not is_csd_op(alu_op_to_stg3))then
+          rs2_forwarded <= bw_alu_result_to_stg3;
+        elsif rd_write_to_forwarding_stg3 = '1' and rd_addr_to_forwarding_stg3 = rs2_addr and rd_addr_to_forwarding_stg3 /= b"00000" and (not is_csd_op(alu_op_to_forwarding_stg3)) then
+          rs2_forwarded <= bw_to_forwarding_stg3;
+        elsif mem_rd_write = '1' and mem_rd_addr = rs2_addr and mem_rd_addr /= b"00000" then
+          rs2_forwarded <= mem_rd_value;
+        elsif wb_rd_write = '1' and wb_rd_addr = rs2_addr and wb_rd_addr /= b"00000" then
+          rs2_forwarded <= wb_rd_value;
+        else
+          rs2_forwarded <= rs2_data;
+        end if;
+--    else                           
+--        rs2_forwarded <= rs2_forwarded_reg;
+--    end if;                        
  end process alu_y_forward;
 
-  -- stall entire of decode to execution stage 1 for 1 cycle 
-
-  detect_load_hazard : process (mem_op_to_hazard_stg3, rd_addr_to_forwarding_stg3, mem_op_to_stg3, rd_addr_to_stg3, mem_mem_op, mem_rd_addr, rs1_addr, rs2_addr, alu_x_src, alu_y_src)
+  detect_load_hazard : process (
+    mem_op_to_hazard_stg3, rd_addr_to_forwarding_stg3, 
+    mem_op_to_stg3, rd_addr_to_stg3, mem_mem_op, mem_rd_addr, 
+    rs1_addr, rs2_addr, alu_x_src, alu_y_src)
   begin
 
     load_hazard_detected <= '0';
 
     if (mem_mem_op = MEMOP_TYPE_LOAD or mem_mem_op = MEMOP_TYPE_LOAD_UNSIGNED) and
-      ((alu_x_src = ALU_SRC_REG and mem_rd_addr = rs1_addr and rs1_addr /= b"00000") or (alu_y_src = ALU_SRC_REG and mem_rd_addr = rs2_addr and rs2_addr /= b"00000")) then
+      ((alu_x_src = ALU_SRC_REG and mem_rd_addr = rs1_addr and rs1_addr /= b"00000") or 
+      (alu_y_src = ALU_SRC_REG and mem_rd_addr = rs2_addr and rs2_addr /= b"00000")) then
 
       load_hazard_detected <= '1';
 
     elsif (mem_op_to_hazard_stg3 = MEMOP_TYPE_LOAD or mem_op_to_hazard_stg3 = MEMOP_TYPE_LOAD_UNSIGNED) and
-      ((alu_x_src = ALU_SRC_REG and rd_addr_to_forwarding_stg3 = rs1_addr and rs1_addr /= b"00000") or (alu_y_src = ALU_SRC_REG and rd_addr_to_forwarding_stg3 = rs2_addr and rs2_addr /= b"00000")) then
+      ((alu_x_src = ALU_SRC_REG and rd_addr_to_forwarding_stg3 = rs1_addr and rs1_addr /= b"00000") or 
+      (alu_y_src = ALU_SRC_REG and rd_addr_to_forwarding_stg3 = rs2_addr and rs2_addr /= b"00000")) then
 
       load_hazard_detected <= '1';
 
     elsif (mem_op_to_stg3 = MEMOP_TYPE_LOAD or mem_op_to_stg3 = MEMOP_TYPE_LOAD_UNSIGNED) and
-      ((alu_x_src = ALU_SRC_REG and rd_addr_to_stg3 = rs1_addr and rs1_addr /= b"00000") or (alu_y_src = ALU_SRC_REG and rd_addr_to_stg3 = rs2_addr and rs2_addr /= b"00000")) then
+      ((alu_x_src = ALU_SRC_REG and rd_addr_to_stg3 = rs1_addr and rs1_addr /= b"00000") or 
+      (alu_y_src = ALU_SRC_REG and rd_addr_to_stg3 = rs2_addr and rs2_addr /= b"00000")) then
 
       load_hazard_detected <= '1';
 
     end if;
   end process detect_load_hazard;
 
-  detect_csr_hazard : process (csr_write_to_stg3, csr_write_to_hazard_stg3, mem_csr_write, wb_csr_write, exception_to_stg3, exception_to_hazard_stg3, mem_exception, wb_exception)
+  detect_csr_hazard : process (
+    csr_write_to_stg3, csr_write_to_hazard_stg3, 
+    mem_csr_write, wb_csr_write, exception_to_stg3, 
+    exception_to_hazard_stg3, mem_exception, wb_exception)
   begin
 
     csr_hazard_detected <= '0';
 
-    if csr_write_to_stg3 /= CSR_WRITE_NONE or csr_write_to_hazard_stg3 /= CSR_WRITE_NONE or mem_csr_write /= CSR_WRITE_NONE or wb_csr_write /= CSR_WRITE_NONE
-      or exception_to_stg3 = '1' or exception_to_hazard_stg3 = '1' or mem_exception = '1' or wb_exception = '1' then
+    if csr_write_to_stg3 /= CSR_WRITE_NONE or csr_write_to_hazard_stg3 /= CSR_WRITE_NONE or mem_csr_write /= CSR_WRITE_NONE or 
+    wb_csr_write /= CSR_WRITE_NONE or exception_to_stg3 = '1' or exception_to_hazard_stg3 = '1' or mem_exception = '1' or wb_exception = '1' then
       csr_hazard_detected <= '1';
     end if;
   end process detect_csr_hazard;
-  detect_csd_instr_hazard : process (alu_op_to_forwarding_stg3, rd_write_to_forwarding_stg3, rd_addr_to_forwarding_stg3, alu_op_to_stg3, rd_write_to_stg3, rd_addr_to_stg3, rs1_addr, rs2_addr)
+
+  -- potential data hazard (RAW) due to CSD Arithme operations ->IE1/->IE3
+  detect_csd_instr_hazard : process (alu_op_to_forwarding_stg3, rd_write_to_forwarding_stg3, rd_addr_to_forwarding_stg3, rs1_addr, rs2_addr)
+    variable csd_hazard : std_logic := '0';
   begin
 
-    csd_instruction_hazard <= '0';
+    csd_hazard := '0';
+    if (rd_write_to_forwarding_stg3 = '1' and (rd_addr_to_forwarding_stg3 = rs1_addr or rd_addr_to_forwarding_stg3 = rs2_addr) 
+    and rd_addr_to_forwarding_stg3 /= b"00000" and is_csd_op(alu_op_to_forwarding_stg3)) then
 
-    if (rd_write_to_forwarding_stg3 = '1' and (rd_addr_to_forwarding_stg3 = rs1_addr or rd_addr_to_forwarding_stg3 = rs2_addr) and rd_addr_to_forwarding_stg3 /= b"00000") then
-      if (alu_op_to_forwarding_stg3 = ALU_ADD or
-        alu_op_to_forwarding_stg3 = ALU_SUB or
-        alu_op_to_forwarding_stg3 = ALU_MUL or
-        alu_op_to_forwarding_stg3 = ALU_MULH or
-        alu_op_to_forwarding_stg3 = ALU_MULHU or
-        alu_op_to_forwarding_stg3 = ALU_MULHSU) then
+      csd_hazard := '1';
 
-        csd_instruction_hazard <= '1';
-
-      end if;
     end if;
 
-    if (rd_write_to_stg3 = '1' and (rd_addr_to_stg3 = rs1_addr or rd_addr_to_stg3 = rs2_addr) and rd_addr_to_stg3 /= b"00000") then
-      if (alu_op_to_stg3 = ALU_ADD or
-        alu_op_to_stg3 = ALU_SUB or
-        alu_op_to_stg3 = ALU_MUL or
-        alu_op_to_stg3 = ALU_MULH or
-        alu_op_to_stg3 = ALU_MULHU or
-        alu_op_to_stg3 = ALU_MULHSU) then
-
-        csd_instruction_hazard <= '1';
-
-      end if;
-    end if;
+    csd_instruction_hazard <= csd_hazard;
 
   end process detect_csd_instr_hazard;
-
-  hazard_detected <= load_hazard_detected or csr_hazard_detected or csd_instruction_hazard;
+  
+  hazard_detected <= load_hazard_detected or csr_hazard_detected or (csd_instruction_hazard);
 
 end architecture behaviour;

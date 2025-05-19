@@ -23,10 +23,68 @@ package pp_utilities is
 	-- operand size and address.
 	function wb_get_data_sel(size : in std_logic_vector(1 downto 0); address : in std_logic_vector)
 		return std_logic_vector;
+	
+    -- Function to identify CSD-type ALU operations
+    function is_csd_op(op : alu_operation) return boolean;
+    
+    -- Function to check if address is within memory range
+    function is_mem_addr(addr : std_logic_vector(31 downto 0)) return boolean;
+    
+    -- Memory function
+    function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return memory_region_t ;
 
 end package pp_utilities;
 
 package body pp_utilities is
+
+  function is_csd_op(op : alu_operation) return boolean is
+  begin
+    return (
+       op = ALU_ADD  or
+       op = ALU_SUB  or
+       op = ALU_MUL  or
+       op = ALU_MULH or
+       op = ALU_MULHU or
+       op = ALU_MULHSU
+    );
+  end function;
+  
+    function is_mem_addr(addr : std_logic_vector(31 downto 0)) return boolean is
+    begin
+        case addr(31 downto 16) is
+            when x"0000" | x"0001" => return true;
+            when x"FFFF" =>
+               case addr(15 downto 10) is
+                when b"100000" | b"100001" | b"100010" | b"100011" | b"100100" =>
+                    return true;
+                when others =>
+                    return false;
+            end case; 
+            when others => return false;
+        end case;
+    end function;
+    
+    function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return memory_region_t is
+        variable mem : memory_region_t;
+    begin
+        if mem_address(31 downto 16) = x"0000" or mem_address(31 downto 16) = x"0001" then
+            mem := MAIN_MEM;
+        elsif mem_address(31 downto 16) = x"FFFF" then
+            case mem_address(15 downto 10) is
+                when b"100000" =>
+                    mem := FSBL_ROM;
+                when b"100001" | b"100010" =>
+                    mem := SSBL_SRAM;
+                when b"100011" | b"100100" =>
+                    mem := AEE_SRAM;
+                when others =>
+                    mem := NON_MEM;
+            end case;
+        else
+            mem := NON_MEM;
+        end if;
+    return mem;
+    end function;
 
 	function to_std_logic(input : in boolean) return std_logic is
 	begin

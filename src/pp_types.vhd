@@ -13,6 +13,9 @@ use ieee.std_logic_1164.all;
 
 package pp_types is
 
+	-- memory type
+	 type memory_region_t is (FSBL_ROM, SSBL_SRAM, AEE_SRAM, MAIN_MEM, NON_MEM);
+
 	--! Type used for register addresses.
 	subtype register_address is std_logic_vector(4 downto 0);
 

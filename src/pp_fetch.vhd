@@ -27,6 +27,7 @@ entity pp_fetch is
 		stall : in STD_LOGIC;
 		flush : in STD_LOGIC;
 		branch : in STD_LOGIC;
+		branch_result : in std_logic;
 		jump_inst_id : in STD_LOGIC;
 		jump_inst_ie : in STD_LOGIC;
 		exception : in STD_LOGIC;
@@ -52,8 +53,7 @@ architecture behaviour of pp_fetch is
 	signal predicted_target : STD_LOGIC_VECTOR(31 downto 0);
 begin
 
-	imem_address <= pc_next when cancel_fetch = '0' else
-		pc;
+	imem_address <= pc_next when cancel_fetch = '0' else pc;
 
 	do_flush <= wrong_prediction;
 	
@@ -98,15 +98,18 @@ begin
 	Branch_prediction_unit : entity work.bpu
 		generic map
 		(
-			INDEX_WIDTH => 8
+			INDEX_WIDTH => 8,
+			RESET_ADDRESS => RESET_ADDRESS
 		)
 		port map
 		(
 			clk => clk,
 			reset => reset,
+			stall => stall,
 			jump_inst_id => jump_inst_id,
 			jump_inst_ie => jump_inst_ie,
 			actual_taken => branch,
+			branch_result => branch_result,
 			actual_target => branch_target,
 			pc_if => pc,
 			pc_id => pcid_bpu,

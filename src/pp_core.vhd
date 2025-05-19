@@ -89,6 +89,8 @@ architecture behaviour of pp_core is
 	signal pcid_bpu, pcie_bpu : STD_LOGIC_VECTOR(31 downto 0);
 	signal jump_inst_ie,jump_inst_id : STD_LOGIC;
 	signal bpu_wrong_prediction : STD_LOGIC;
+	signal branch_result : std_logic;
+	
 	-- Register file read ports:
 	signal rs1_address_p, rs2_address_p : register_address;
 	signal rs1_address, rs2_address : register_address;
@@ -256,6 +258,7 @@ begin
 			stall => stall_if,
 			flush => flush_if,
 			branch => branch_taken,
+			branch_result => branch_result,
 			jump_inst_id => jump_inst_id,
 			jump_inst_ie => jump_inst_ie,
 			pcid_bpu => id_pc,
@@ -365,6 +368,7 @@ begin
 			exception_context_out => ex_exception_context,
 			jump_out => branch_taken,
 			jump_inst => jump_inst_ie,
+			branch_result => branch_result,
 			pcie_bpu => pcie_bpu,
 			jump_target_out => branch_target,
 			mem_rd_write => mem_rd_write,

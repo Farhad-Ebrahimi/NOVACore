@@ -100,6 +100,7 @@ entity fp_exe_stg1 is
     -- Control outputs:
     jump_out : out std_logic;
     jump_inst : out std_logic;
+    branch_result : out std_logic;
     jump_target_out : out std_logic_vector(31 downto 0);
 
     rs1_forwarded : in std_logic_vector(31 downto 0);
@@ -118,7 +119,9 @@ architecture behaviour of fp_exe_stg1 is
   signal alu_x_src, alu_y_src : alu_operand_source;
 
   signal alu_x, alu_y, alu_result : std_logic_vector(31 downto 0);
-
+  signal alu_x_reg, alu_y_reg: std_logic_vector(31 downto 0);
+  signal alu_x_mux_o, alu_y_mux_o: std_logic_vector(31 downto 0);
+  
   signal rs1_addr : register_address;
 
   signal mem_op : memory_operation_type;
@@ -185,6 +188,10 @@ begin
   do_jump <= (to_std_logic(branch = BRANCH_JUMP or branch = BRANCH_JUMP_INDIRECT)
     or (to_std_logic(branch = BRANCH_CONDITIONAL) and branch_condition)
     or to_std_logic(branch = BRANCH_SRET)) and not stall;
+  
+  branch_result <= (to_std_logic(branch = BRANCH_JUMP or branch = BRANCH_JUMP_INDIRECT)
+    or (to_std_logic(branch = BRANCH_CONDITIONAL) and branch_condition)
+    or to_std_logic(branch = BRANCH_SRET));
     
   jump_inst <= '1' when (branch /= BRANCH_NONE) else '0';
   
@@ -198,13 +205,14 @@ begin
 
   dmem_address <= (others => '0');
   dmem_data_out <= rs2_forwarded;
-  dmem_write_req <= '1' when mem_op = MEMOP_TYPE_STORE and exception_taken = '0' else
-    '0';
-  dmem_read_req <= '1' when memop_is_load(mem_op) and exception_taken = '0' else
-    '0';
+  dmem_write_req <= '1' when mem_op = MEMOP_TYPE_STORE and exception_taken = '0' else '0';
+  dmem_read_req <= '1' when memop_is_load(mem_op) and exception_taken = '0' else '0';
 
   alu_op_out <= alu_op;
   alu_y_out <= alu_y;
+  
+  alu_x <= alu_x_mux_o when stall ='0' else alu_x_reg;
+  alu_y <= alu_y_mux_o when stall ='0' else alu_y_reg;
 
   pipeline_register : process (clk)
   begin
@@ -222,7 +230,7 @@ begin
 
         pc <= pc_in;
         count_instruction_out <= count_instruction_in;
-
+        
         -- Register signals:
         rd_write_out <= rd_write_in;
         rd_addr_out <= rd_addr_in;
@@ -233,6 +241,9 @@ begin
         alu_x_src <= alu_x_src_in;
         alu_y_src <= alu_y_src_in;
 
+        alu_x_reg <= alu_x;
+        alu_y_reg <= alu_y;
+        
         -- Control signals:
         branch <= branch_in;
         mem_op <= mem_op_in;
@@ -356,7 +367,7 @@ begin
       shamt_value => shamt,
       pc_value => pc,
       csr_value => csr_value,
-      output => alu_x
+      output => alu_x_mux_o
     );
 
   alu_y_mux : entity work.pp_alu_mux
@@ -367,7 +378,7 @@ begin
       shamt_value => shamt,
       pc_value => pc,
       csr_value => csr_value,
-      output => alu_y
+      output => alu_y_mux_o
     );
 
   branch_comparator : entity work.pp_comparator
