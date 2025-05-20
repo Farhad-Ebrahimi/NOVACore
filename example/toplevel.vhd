@@ -32,11 +32,11 @@ entity toplevel is
 
 		-- UART0 signals:
 		uart0_txd : out std_logic;
-		uart0_rxd : in  std_logic;
+		uart0_rxd : in  std_logic
 
 		-- UART1 signals:
-		uart1_txd : out std_logic;
-		uart1_rxd : in  std_logic
+--		uart1_txd : out std_logic;
+--		uart1_rxd : in  std_logic
 );
 end entity toplevel;
 
@@ -96,13 +96,13 @@ architecture behaviour of toplevel is
 	signal uart0_ack_out : std_logic;
 
 	-- UART1 signals:
-	signal uart1_adr_in  : std_logic_vector(11 downto 0);
-	signal uart1_dat_in  : std_logic_vector( 7 downto 0);
-	signal uart1_dat_out : std_logic_vector( 7 downto 0);
-	signal uart1_cyc_in  : std_logic;
-	signal uart1_stb_in  : std_logic;
-	signal uart1_we_in   : std_logic;
-	signal uart1_ack_out : std_logic;
+--	signal uart1_adr_in  : std_logic_vector(11 downto 0);
+--	signal uart1_dat_in  : std_logic_vector( 7 downto 0);
+--	signal uart1_dat_out : std_logic_vector( 7 downto 0);
+--	signal uart1_cyc_in  : std_logic;
+--	signal uart1_stb_in  : std_logic;
+--	signal uart1_we_in   : std_logic;
+--	signal uart1_ack_out : std_logic;
 
 	-- Interconnect control module:
 	signal intercon_adr_in  : std_logic_vector(11 downto 0);
@@ -124,12 +124,12 @@ architecture behaviour of toplevel is
 	signal error_ack_out : std_logic;
 
 	-- FSBL ROM signals:
-	signal fsbl_rom_adr_in  : std_logic_vector(9 downto 0);
-	signal fsbl_rom_dat_out : std_logic_vector(31 downto 0);
-	signal fsbl_rom_cyc_in  : std_logic;
-	signal fsbl_rom_stb_in  : std_logic;
-	signal fsbl_rom_sel_in  : std_logic_vector(3 downto 0);
-	signal fsbl_rom_ack_out : std_logic;
+--	signal fsbl_rom_adr_in  : std_logic_vector(9 downto 0);
+--	signal fsbl_rom_dat_out : std_logic_vector(31 downto 0);
+--	signal fsbl_rom_cyc_in  : std_logic;
+--	signal fsbl_rom_stb_in  : std_logic;
+--	signal fsbl_rom_sel_in  : std_logic_vector(3 downto 0);
+--	signal fsbl_rom_ack_out : std_logic;
 
 	-- SSBL RAM signals:
 	signal ssbl_ram_adr_in  : std_logic_vector(10 downto 0);
@@ -164,8 +164,8 @@ architecture behaviour of toplevel is
 	-- Selected peripheral on the interconnect:
 	type intercon_peripheral_type is (
 		PERIPHERAL_TIMER0, PERIPHERAL_TIMER1,
-		PERIPHERAL_UART0,PERIPHERAL_UART1,PERIPHERAL_SSBL_RAM,
-		PERIPHERAL_FSBL_ROM, PERIPHERAL_AEE_RAM, PERIPHERAL_INTERCON,
+		PERIPHERAL_UART0,PERIPHERAL_SSBL_RAM,
+		PERIPHERAL_AEE_RAM, PERIPHERAL_INTERCON,
 		PERIPHERAL_MAIN_MEMORY, PERIPHERAL_ERROR, PERIPHERAL_NONE);
 	signal intercon_peripheral : intercon_peripheral_type := PERIPHERAL_NONE;
 
@@ -178,7 +178,7 @@ begin
 			IRQ_TIMER0_INDEX => timer0_irq,
 			IRQ_TIMER1_INDEX => timer1_irq,
 			IRQ_UART0_INDEX => uart0_irq,
-			IRQ_UART1_INDEX => uart1_irq,
+			IRQ_UART1_INDEX => '0',
 			IRQ_BUS_ERROR_INDEX => intercon_irq_bus_error,
 			others => '0'
 		);
@@ -204,8 +204,8 @@ begin
 									intercon_peripheral <= PERIPHERAL_TIMER1;
 								when x"2" =>
 									intercon_peripheral <= PERIPHERAL_UART0;
-								when x"3" =>
-									intercon_peripheral <= PERIPHERAL_UART1;
+--								when x"3" =>
+--									intercon_peripheral <= PERIPHERAL_UART1;
 								when x"5" =>
 									intercon_peripheral <= PERIPHERAL_INTERCON;
 								when others => -- Invalid address - delegated to the error peripheral
@@ -213,11 +213,11 @@ begin
 							end case;
 							elsif processor_adr_out(31 downto 16) = x"ffff" then  -- Firmware memory space
 								case processor_adr_out(15 downto 10) is
-									when x"20" =>  -- FSBL ROM (0xffff8000 - 0xffff83ff)
-										intercon_peripheral <= PERIPHERAL_FSBL_ROM;
-									when x"21" | x"22" =>  -- SSBL ROM (0xffff8400 - 0xffff8bff)
+--									when b"100000" =>  -- FSBL ROM (0xffff8000 - 0xffff83ff)
+--										intercon_peripheral <= PERIPHERAL_FSBL_ROM;
+									when b"100001" | b"100010" =>  -- SSBL ROM (0xffff8400 - 0xffff8bff)
 										intercon_peripheral <= PERIPHERAL_SSBL_RAM;
-									when x"23" | x"24" =>  -- AEE RAM (0xffff8c00 - 0xffff93ff)
+									when b"100011" | b"100100" =>  -- AEE RAM (0xffff8c00 - 0xffff93ff)
 										intercon_peripheral <= PERIPHERAL_AEE_RAM;
 									when others =>
 										null; 
@@ -240,9 +240,9 @@ begin
 
 	processor_intercon: process(intercon_peripheral,
 		timer0_ack_out, timer0_dat_out, timer1_ack_out, timer1_dat_out,
-		uart0_ack_out, uart0_dat_out, uart1_ack_out, uart1_dat_out,
+		uart0_ack_out, uart0_dat_out, -- uart1_ack_out, uart1_dat_out,
 		intercon_ack_out, intercon_dat_out, error_ack_out,
-		fsbl_rom_ack_out, fsbl_rom_dat_out, aee_ram_ack_out, aee_ram_dat_out,
+		aee_ram_ack_out, aee_ram_dat_out,
 		main_memory_ack_out, main_memory_dat_out)
 	begin
 		case intercon_peripheral is
@@ -255,15 +255,15 @@ begin
 			when PERIPHERAL_UART0 =>
 				processor_ack_in <= uart0_ack_out;
 				processor_dat_in <= x"000000" & uart0_dat_out;
-			when PERIPHERAL_UART1 =>
-				processor_ack_in <= uart1_ack_out;
-				processor_dat_in <= x"000000" & uart1_dat_out;
+--			when PERIPHERAL_UART1 =>
+--				processor_ack_in <= uart1_ack_out;
+--				processor_dat_in <= x"000000" & uart1_dat_out;
 			when PERIPHERAL_INTERCON =>
 				processor_ack_in <= intercon_ack_out;
 				processor_dat_in <= intercon_dat_out;
-			when PERIPHERAL_FSBL_ROM =>
-				processor_ack_in <= fsbl_rom_ack_out;
-				processor_dat_in <= fsbl_rom_dat_out;
+--			when PERIPHERAL_FSBL_ROM =>
+--				processor_ack_in <= fsbl_rom_ack_out;
+--				processor_dat_in <= fsbl_rom_dat_out;
 			when PERIPHERAL_SSBL_RAM =>
 				processor_ack_in <= ssbl_ram_ack_out;
 				processor_dat_in <= ssbl_ram_dat_out;
@@ -371,30 +371,30 @@ begin
 	uart0_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_UART0 else '0';
 	uart0_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_UART0 else '0';
 
-	uart1: entity work.pp_soc_uart
+--	uart1: entity work.pp_soc_uart
 
-	generic map(
-		FIFO_DEPTH => 32
-	) port map(
-		clk => system_clk,
-		reset => reset,
-		txd => uart1_txd,
-		rxd => uart1_rxd,
-		irq => uart1_irq,
-		wb_adr_in => uart1_adr_in,
-		wb_dat_in => uart1_dat_in,
-		wb_dat_out => uart1_dat_out,
-		wb_cyc_in => uart1_cyc_in,
-		wb_stb_in => uart1_stb_in,
-		wb_we_in => uart1_we_in,
-		wb_ack_out => uart1_ack_out
-	);
+--	generic map(
+--		FIFO_DEPTH => 32
+--	) port map(
+--		clk => system_clk,
+--		reset => reset,
+--		txd => uart1_txd,
+--		rxd => uart1_rxd,
+--		irq => uart1_irq,
+--		wb_adr_in => uart1_adr_in,
+--		wb_dat_in => uart1_dat_in,
+--		wb_dat_out => uart1_dat_out,
+--		wb_cyc_in => uart1_cyc_in,
+--		wb_stb_in => uart1_stb_in,
+--		wb_we_in => uart1_we_in,
+--		wb_ack_out => uart1_ack_out
+--	);
 
-	uart1_adr_in <= processor_adr_out(uart1_adr_in'range);
-	uart1_dat_in <= processor_dat_out(7 downto 0);
-	uart1_we_in  <= processor_we_out;
-	uart1_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
-	uart1_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
+--	uart1_adr_in <= processor_adr_out(uart1_adr_in'range);
+--	uart1_dat_in <= processor_dat_out(7 downto 0);
+--	uart1_we_in  <= processor_we_out;
+--	uart1_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
+--	uart1_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_UART1 else '0';
 
 	intercon_error: entity work.pp_soc_intercon
 		port map(
@@ -428,23 +428,23 @@ begin
 	error_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_ERROR else '0';
 	error_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_ERROR else '0';
 
-	fsbl_rom: entity work.fsbl_rom_wrapper
-		generic map(
-			MEMORY_SIZE => 1024
-		) port map(
-			clk => system_clk,
-			reset => reset,
-			wb_adr_in => fsbl_rom_adr_in,
-			wb_dat_out => fsbl_rom_dat_out,
-			wb_cyc_in => fsbl_rom_cyc_in,
-			wb_stb_in => fsbl_rom_stb_in,
-			wb_sel_in => fsbl_rom_sel_in,
-			wb_ack_out => fsbl_rom_ack_out
-		);
-	fsbl_rom_adr_in <= processor_adr_out(fsbl_rom_adr_in'range);
-	fsbl_rom_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_FSBL_ROM else '0';
-	fsbl_rom_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_FSBL_ROM else '0';
-	fsbl_rom_sel_in <= processor_sel_out;
+--	fsbl_rom: entity work.fsbl_rom_wrapper
+--		generic map(
+--			MEMORY_SIZE => 1024
+--		) port map(
+--			clk => system_clk,
+--			reset => reset,
+--			wb_adr_in => fsbl_rom_adr_in,
+--			wb_dat_out => fsbl_rom_dat_out,
+--			wb_cyc_in => fsbl_rom_cyc_in,
+--			wb_stb_in => fsbl_rom_stb_in,
+--			wb_sel_in => fsbl_rom_sel_in,
+--			wb_ack_out => fsbl_rom_ack_out
+--		);
+--	fsbl_rom_adr_in <= processor_adr_out(fsbl_rom_adr_in'range);
+--	fsbl_rom_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_FSBL_ROM else '0';
+--	fsbl_rom_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_FSBL_ROM else '0';
+--	fsbl_rom_sel_in <= processor_sel_out;
 
 	ssbl_ram_instance : entity work.ssbl_ram_wrapper
 		port map(

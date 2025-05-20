@@ -63,6 +63,27 @@ architecture behaviour of pp_novacore is
 	signal dmem_read_ack  : std_logic;
 	signal dmem_write_req : std_logic;
 	signal dmem_write_ack : std_logic;
+	
+	-- Instruction memory signals (nv_memsys)
+	signal imem_data_memsys : std_logic_vector(31 downto 0);
+	signal imem_ack_memsys : std_logic;
+
+	-- Data memory signals (nv_memsys)
+	signal dmem_data_in_memsys : std_logic_vector(31 downto 0);
+	signal dmem_read_ack_memsys : std_logic;
+	signal dmem_write_ack_memsys : std_logic;
+
+	-- keep ack in nv_memsys high until stall gets 0 
+	signal processor_stalled : std_logic;
+	
+	-- Instruction memory signals (Wishbone adapter)
+	signal imem_data_wb : std_logic_vector(31 downto 0);
+	signal imem_ack_wb : std_logic;
+
+	-- Data memory signals (Wishbone adapter)
+	signal dmem_data_in_wb : std_logic_vector(31 downto 0);
+	signal dmem_read_ack_wb : std_logic;
+	signal dmem_write_ack_wb : std_logic;
 
 	-- Wishbone signals:
 	signal icache_inputs, dmem_if_inputs   : wishbone_master_inputs;
@@ -96,6 +117,28 @@ begin
 			test_context_out => test_context_out,
 			irq => irq
 		);
+		
+    -- nv_memsys: instruction & data memory
+	instance_memsys : entity work.nv_memsys
+		generic map(
+			RESET_ADDRESS => RESET_ADDRESS
+		)
+		port map(
+			clk => clk,
+			reset => reset,
+			imem_address => imem_address,
+			imem_data => imem_data_memsys,
+			imem_req => imem_req,
+			imem_ack => imem_ack_memsys,
+			dmem_address => dmem_address,
+			dmem_data_in => dmem_data_out,
+			dmem_data_out => dmem_data_in_memsys,
+			dmem_data_size => dmem_data_size,
+			dmem_read_req => dmem_read_req,
+			dmem_read_ack => dmem_read_ack_memsys,
+			dmem_write_req => dmem_write_req,
+			dmem_write_ack => dmem_write_ack_memsys
+		);
 
 	icache_enabled: if ICACHE_ENABLE
 	generate
@@ -107,9 +150,9 @@ begin
 				clk => clk,
 				reset => reset,
 				mem_address_in => imem_address,
-				mem_data_out => imem_data,
+				mem_data_out => imem_data_wb,
 				mem_read_req => imem_req,
-				mem_read_ack => imem_ack,
+				mem_read_ack => imem_ack_wb,
 				wb_inputs => icache_inputs,
 				wb_outputs => icache_outputs
 			);
@@ -129,10 +172,10 @@ begin
 				reset => reset,
 				mem_address => imem_address,
 				mem_data_in => (others => '0'),
-				mem_data_out => imem_data,
+				mem_data_out => imem_data_wb,
 				mem_data_size => (others => '0'),
 				mem_read_req => imem_req,
-				mem_read_ack => imem_ack,
+				mem_read_ack => imem_ack_wb,
 				mem_write_req => '0',
 				mem_write_ack => open,
 				wb_inputs => icache_inputs,
@@ -152,12 +195,12 @@ begin
 			reset => reset,
 			mem_address => dmem_address,
 			mem_data_in => dmem_data_out,
-			mem_data_out => dmem_data_in,
+			mem_data_out => dmem_data_in_wb,
 			mem_data_size => dmem_data_size,
 			mem_read_req => dmem_read_req,
-			mem_read_ack => dmem_read_ack,
+			mem_read_ack => dmem_read_ack_wb,
 			mem_write_req => dmem_write_req,
-			mem_write_ack => dmem_write_ack,
+			mem_write_ack => dmem_write_ack_wb,
 			wb_inputs => dmem_if_inputs,
 			wb_outputs => dmem_if_outputs
 		);
@@ -179,6 +222,39 @@ begin
 			wb_dat_in => wb_dat_in,
 			wb_ack_in => wb_ack_in
 		);
+		
+		process (clk)
+	begin
+		if rising_edge(clk) then
+			if reset = '1' then
+				imem_data <= (others => '0');
+				imem_ack <= '0';
+				dmem_data_in <= (others => '0');
+				dmem_read_ack <= '0';
+				dmem_write_ack <= '0';
+			else
+				-- Instruction memory mux
+				if is_mem_addr(imem_address) then
+					imem_data <= imem_data_memsys;
+					imem_ack <= imem_ack_memsys;
+				else
+					imem_data <= imem_data_wb;
+					imem_ack <= imem_ack_wb;
+				end if;
+
+				-- Data memory mux
+				if is_mem_addr(dmem_address) then
+					dmem_data_in <= dmem_data_in_memsys;
+					dmem_read_ack <= dmem_read_ack_memsys;
+					dmem_write_ack <= dmem_write_ack_memsys;
+				else
+					dmem_data_in <= dmem_data_in_wb;
+					dmem_read_ack <= dmem_read_ack_wb;
+					dmem_write_ack <= dmem_write_ack_wb;
+				end if;
+			end if;
+		end if;
+	end process;
 
 end architecture behaviour;
 

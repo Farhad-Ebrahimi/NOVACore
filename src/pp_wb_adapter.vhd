@@ -84,16 +84,15 @@ begin
 						mem_r_ack <= '0';
 
 						-- Prioritize requests from the data memory:
-						if mem_write_req = '1' then
+						if mem_write_req = '1' and (not is_mem_addr(mem_address)) then
 							wb_outputs.adr <= mem_address;
-							wb_outputs.dat <= std_logic_vector(shift_left(unsigned(mem_data_in),
-								get_data_shift(mem_data_size, mem_address)));
+							wb_outputs.dat <= std_logic_vector(shift_left(unsigned(mem_data_in),get_data_shift(mem_data_size, mem_address)));
 							wb_outputs.sel <= wb_get_data_sel(mem_data_size, mem_address);
 							wb_outputs.cyc <= '1';
 							wb_outputs.stb <= '1';
 							wb_outputs.we <= '1';
 							state <= WRITE_WAIT_ACK;
-						elsif mem_read_req = '1' then
+						elsif mem_read_req = '1' and (not is_mem_addr(mem_address)) then
 							wb_outputs.adr <= mem_address;
 							wb_outputs.sel <= wb_get_data_sel(mem_data_size, mem_address);
 							wb_outputs.cyc <= '1';
@@ -103,8 +102,7 @@ begin
 						end if;
 					when READ_WAIT_ACK =>
 						if wb_inputs.ack = '1' then
-							mem_data_out <= std_logic_vector(shift_right(unsigned(wb_inputs.dat),
-								get_data_shift(mem_data_size, mem_address)));
+							mem_data_out <= std_logic_vector(shift_right(unsigned(wb_inputs.dat),get_data_shift(mem_data_size, mem_address)));
 							wb_outputs.cyc <= '0';
 							wb_outputs.stb <= '0';
 							mem_r_ack <= '1';
@@ -121,5 +119,6 @@ begin
 			end if;
 		end if;
 	end process wishbone;
+
 
 end architecture behaviour;
