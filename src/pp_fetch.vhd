@@ -27,7 +27,6 @@ entity pp_fetch is
 		stall : in STD_LOGIC;
 		flush : in STD_LOGIC;
 		branch : in STD_LOGIC;
-		branch_result : in std_logic;
 		jump_inst_id : in STD_LOGIC;
 		jump_inst_ie : in STD_LOGIC;
 		exception : in STD_LOGIC;
@@ -48,6 +47,7 @@ end entity pp_fetch;
 architecture behaviour of pp_fetch is
 	signal pc : STD_LOGIC_VECTOR(31 downto 0);
 	signal pc_next : STD_LOGIC_VECTOR(31 downto 0);
+	signal imem_data :  STD_LOGIC_VECTOR(31 downto 0);
 	signal cancel_fetch : STD_LOGIC;
 	signal wrong_prediction : STD_LOGIC;
 	signal predicted_target : STD_LOGIC_VECTOR(31 downto 0);
@@ -57,7 +57,7 @@ begin
 
 	do_flush <= wrong_prediction;
 	
-	instruction_data <= imem_data_in;
+	instruction_data <= imem_data_in when stall = '0' else imem_data;
 	instruction_ready <= imem_ack and (not stall) and (not cancel_fetch);
 	instruction_address <= pc;
 
@@ -77,6 +77,9 @@ begin
 					cancel_fetch <= '0';
 				else
 					pc <= pc_next;
+				end if;
+				if stall = '0' then
+				    imem_data <= imem_data_in;
 				end if;
 			end if;
 		end if;
@@ -109,7 +112,6 @@ begin
 			jump_inst_id => jump_inst_id,
 			jump_inst_ie => jump_inst_ie,
 			actual_taken => branch,
-			branch_result => branch_result,
 			actual_target => branch_target,
 			pc_if => pc,
 			pc_id => pcid_bpu,

@@ -14,7 +14,6 @@ entity bpu is
         jump_inst_id : in std_logic;
         jump_inst_ie : in std_logic;
         actual_taken : in std_logic;
-        branch_result: in std_logic;
         actual_target : in std_logic_vector(31 downto 0);
         pc_if : in std_logic_vector(31 downto 0);
         pc_id : in std_logic_vector(31 downto 0);
@@ -37,7 +36,6 @@ architecture Behavioral of bpu is
     signal btb_tag : btb_tag_array := (others => (others => '0'));
     signal btb_target : btb_target_array := (others => (others => '0'));
     signal branch_history : std_logic;
-    signal trg_addr_o_reg,trg_addr_proc : std_logic_vector(31 downto 0);
     signal wrong_prdt : std_logic;
 
     signal index_if : integer range 0 to 2 ** INDEX_WIDTH - 1;
@@ -58,12 +56,10 @@ architecture Behavioral of bpu is
 
 begin
 
-    wrong_prdt <= '1' when ((branch_history /= actual_taken or
-    (branch_history = '1' and branch_history = actual_taken and prdt_addr /= actual_target))) --or
-    --(stall='1' and (branch_history /= branch_result or
-    --(branch_history = '1' and branch_history = branch_result and prdt_addr /= actual_target)))
-    else '0';
-   
+    wrong_prdt <= '1' when ((branch_history /= actual_taken) or
+        (branch_history = '1' and branch_history = actual_taken and prdt_addr /= actual_target))
+        else '0';
+
     do_flush <= wrong_prdt;
 
     index_if <= to_integer(unsigned(pc_if(INDEX_WIDTH + 1 downto 2)));
@@ -87,7 +83,6 @@ begin
                 next_address <= (others => '0');
                 next_history <= '0';
             else
-                trg_addr_o_reg <= trg_addr_proc;
                 if stall = '0' then
                     if jump_inst_ie = '1' and wrong_prdt = '1' then
                         if btb_valid(index_ie) = '1' and btb_tag(index_ie) = pc_ie(31 downto INDEX_WIDTH + 2) then
@@ -100,8 +95,8 @@ begin
                             btb_target(index_ie) <= actual_target;
                         end if;
                     else
-                        next_address <= btb_target(index_if);
-                        next_history <= btb_taken(index_if);
+                            next_address <= btb_target(index_if);
+                            next_history <= btb_taken(index_if);
                     end if;
                 end if;
             end if;
@@ -121,11 +116,11 @@ begin
             else
                 branch_history <= '0';
                 if stall = '0' then
-                    prdt_addr <= (others => '0');
-                    if jump_inst_id = '1'and wrong_prdt = '0' then
-                        if btb_valid(index_id) = '1' and btb_tag(index_id) = pc_id(31 downto INDEX_WIDTH + 2) then
-                            branch_history <= btb_taken(index_id);
-                            prdt_addr <= btb_target(index_id);
+                prdt_addr <= (others => '0');
+                if jump_inst_id = '1'and wrong_prdt = '0' then
+                    if btb_valid(index_id) = '1' and btb_tag(index_id) = pc_id(31 downto INDEX_WIDTH + 2) then
+                        branch_history <= btb_taken(index_id);
+                        prdt_addr <= btb_target(index_id);
                         end if;
                     end if;
                 end if;
@@ -140,26 +135,22 @@ begin
     Making_prediction : process (reset, stall, pc_if, pcif_plus4, btb_valid, btb_tag, wrong_prdt, actual_target, actual_taken, pcie_plus4, next_history, next_address)
     begin
         if reset = '1' then
-            trg_addr_proc <= RESET_ADDRESS;
-        elsif stall = '0' then
+            trg_addr_o <= RESET_ADDRESS;
+        else 
             if wrong_prdt = '1' then
                 if actual_taken = '1' then
-                    trg_addr_proc <= actual_target;
+                    trg_addr_o <= actual_target;
                 else
-                    trg_addr_proc <= pcie_plus4;
+                    trg_addr_o <= pcie_plus4;
                 end if;
             else
                 if btb_valid(index_if) = '1' and btb_tag(index_if) = pc_if(31 downto INDEX_WIDTH + 2) and next_history = '1' then
-                    trg_addr_proc <= next_address;
+                    trg_addr_o <= next_address;
                 else
-                    trg_addr_proc <= pcif_plus4;
+                    trg_addr_o <= pcif_plus4;
                 end if;
             end if;
-        else
-            trg_addr_proc <= trg_addr_o_reg;
-        end if;
+         end if;
     end process Making_prediction;
-    
-    trg_addr_o <= trg_addr_proc ;
 
 end Behavioral;

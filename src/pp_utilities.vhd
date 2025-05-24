@@ -33,9 +33,39 @@ package pp_utilities is
     -- Memory function
     function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return memory_region_t ;
 
+    function get_data_shift(size : in std_logic_vector(1 downto 0); address : in std_logic_vector)
+    return natural;
+
 end package pp_utilities;
 
 package body pp_utilities is
+    function get_data_shift(size : in std_logic_vector(1 downto 0); address : in std_logic_vector)
+    return natural is
+begin
+    case size is
+        when b"01" =>
+            if address(1 downto 0) = "00" then
+                return 0;
+            elsif address(1 downto 0) = "01" then
+                return 8;
+            elsif address(1 downto 0) = "10" then
+                return 16;
+            elsif address(1 downto 0) = "11" then
+                return 24;
+            else
+                return 0;
+            end if;
+        when b"10" =>
+            if address(1) = '0' then
+                return 0;
+            else
+                return 16;
+            end if;
+        when others =>
+            return 0;
+    end case;
+end function;
+
 
   function is_csd_op(op : alu_operation) return boolean is
   begin
@@ -52,10 +82,11 @@ package body pp_utilities is
     function is_mem_addr(addr : std_logic_vector(31 downto 0)) return boolean is
     begin
         case addr(31 downto 16) is
-          --  when x"0000" | x"0001" => return true;
+            when x"0000" | x"0001" => 
+                return true;
             when x"FFFF" =>
                case addr(15 downto 10) is
-                when b"100000" => --| b"100001" | b"100010" | b"100011" | b"100100" =>
+                when b"100000" | b"100001" | b"100010" | b"100011" | b"100100" =>
                     return true;
                 when others =>
                     return false;
@@ -67,16 +98,16 @@ package body pp_utilities is
     function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return memory_region_t is
         variable mem : memory_region_t;
     begin
-        --if mem_address(31 downto 16) = x"0000" or mem_address(31 downto 16) = x"0001" then
-        --    mem := MAIN_MEM;
-        if mem_address(31 downto 16) = x"FFFF" then
+        if mem_address(31 downto 16) = x"0000" or mem_address(31 downto 16) = x"0001" then
+            mem := MAIN_MEM;
+        elsif mem_address(31 downto 16) = x"FFFF" then
             case mem_address(15 downto 10) is
                 when b"100000" =>
                     mem := FSBL_ROM;
-                -- when b"100001" | b"100010" =>
-                --     mem := SSBL_SRAM;
-                -- when b"100011" | b"100100" =>
-                --     mem := AEE_SRAM;
+                when b"100001" | b"100010" =>
+                    mem := SSBL_SRAM;
+                when b"100011" | b"100100" =>
+                    mem := AEE_SRAM;
                 when others =>
                     mem := NON_MEM;
             end case;

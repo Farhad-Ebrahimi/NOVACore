@@ -18,23 +18,22 @@ entity aee_ram_wrapper is
         rst : in std_logic;
         csb : in std_logic;
         web : in std_logic;
-        stb : in std_logic;
         wmask : in std_logic_vector(NUM_WMASKS - 1 downto 0);
         addr : in std_logic_vector(ADDR_WIDTH + 1 downto 0);
         din : in std_logic_vector(DATA_WIDTH - 1 downto 0);
-        dout : out std_logic_vector(DATA_WIDTH - 1 downto 0);
-        ack_out : out std_logic
+        dout : out std_logic_vector(DATA_WIDTH - 1 downto 0)
     );
 end entity aee_ram_wrapper;
 
 architecture rtl of aee_ram_wrapper is
-    
+
     signal web_intermediate : std_logic;
     signal csb_intermediate : std_logic;
-    
+
     signal sram_addr : std_logic_vector(ADDR_WIDTH - 1 downto 0);
     signal dout_sram : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram_blocks : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
+    signal dout_reg : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
+    signal dout_sram_bank0 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
 
     component sky130_sram_2kbyte_1rw1r_32x512_8 is
         port (
@@ -52,50 +51,32 @@ architecture rtl of aee_ram_wrapper is
         );
     end component;
 
-    type state_type is (IDLE, ACK);
-	signal state : state_type;
-
-	signal read_ack : std_logic;
-
 begin
 
     sram_addr <= addr(10 downto 2);
 
-    ack_out <= read_ack and stb;
     web_intermediate <= not web;
+    csb_intermediate <= not csb;
 
-    csb_intermediate <= '0' when (csb = '1' and stb = '1') else '1';
-
-    process (clk)
+    process (dout_sram_bank0, web, rst)
+        variable temp : std_logic := '1';
     begin
-        if rising_edge(clk) then
-            if rst = '1' then
-                read_ack <= '0';
-                state <= IDLE;
-            else
-                if csb = '1' then
-                    case state is
-                        when IDLE =>
-                            if stb = '1' and web = '1' then
-                                read_ack <= '1';
-                                state <= ACK;
-                            elsif stb = '1' then
-                                read_ack <= '1';
-                                state <= ACK;
-                            end if;
-                        when ACK =>
-                            if stb = '0' then
-                                read_ack <= '0';
-                                state <= IDLE;
-                            end if;
-                    end case;
-                else
-                    state <= IDLE;
-                    read_ack <= '0';
+        if rst = '1' then
+            dout_reg <= (others => '0');
+        elsif web = '0' then
+            temp := '1';
+            for i in dout_sram_bank0'range loop
+                if dout_sram_bank0(i) /= '0' and dout_sram_bank0(i) /= '1' then
+                    temp := '0';
                 end if;
+            end loop;
+            if temp = '1' then
+                dout_reg <= dout_sram_bank0;
             end if;
         end if;
     end process;
+
+    dout <= dout_reg;
 
     Bank_0 : sky130_sram_2kbyte_1rw1r_32x512_8
     port map(
@@ -105,13 +86,11 @@ begin
         wmask0 => wmask,
         addr0 => sram_addr,
         din0 => din,
-        dout0 => dout_sram_blocks,
+        dout0 => dout_sram_bank0,
         clk1 => '1',
         csb1 => '1',
         addr1 => (others => '0'),
         dout1 => dout_sram
     );
-
-    dout <= dout_sram_blocks when csb_intermediate='0' else (others=>'0');
 
 end architecture rtl;

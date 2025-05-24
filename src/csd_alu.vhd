@@ -13,7 +13,6 @@ use work.pp_types.all;
 --!	CSD Arithmetic Logic Unit (CSD ALU).
 entity csd_alu is
 	port(
-        y         : in  std_logic_vector(31 downto 0); --! Input operand.
 		xs,xd     : in  std_logic_vector(32 downto 0); --! Input operand.
         ys,yd     : in  std_logic_vector(32 downto 0); --! Input operand.
 		P_result  : out std_logic_vector(31 downto 0); --! Operation result.

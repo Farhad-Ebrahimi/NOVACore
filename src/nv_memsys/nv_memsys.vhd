@@ -52,33 +52,33 @@ architecture rtl of nv_memsys is
     signal fsbl_rom_cyc_in : std_logic;
     signal fsbl_rom_sel_in : std_logic_vector(3 downto 0);
 
-    -- SSBL RAM signals
-    -- signal ssbl_ram_adr_in : std_logic_vector(10 downto 0);
-    -- signal ssbl_ram_dat_in : std_logic_vector(31 downto 0);
-    -- signal ssbl_ram_dat_out : std_logic_vector(31 downto 0);
-    -- signal ssbl_ram_cyc_in : std_logic;
-    -- signal ssbl_ram_sel_in : std_logic_vector(3 downto 0);
-    -- signal ssbl_ram_we_in : std_logic;
-    -- 
-    -- -- AEE RAM signals
-    -- signal aee_ram_adr_in : std_logic_vector(10 downto 0);
-    -- signal aee_ram_dat_in : std_logic_vector(31 downto 0);
-    -- signal aee_ram_dat_out : std_logic_vector(31 downto 0);
-    -- signal aee_ram_cyc_in : std_logic;
-    -- signal aee_ram_sel_in : std_logic_vector(3 downto 0);
-    -- signal aee_ram_we_in : std_logic;
-    -- signal aee_ram_rd_ack : std_logic;
-    -- signal aee_ram_wr_ack : std_logic;
-    -- 
-    -- -- Main memory signals
-    -- signal main_memory_adr_in : std_logic_vector(12 downto 0);
-    -- signal main_memory_dat_in : std_logic_vector(31 downto 0);
-    -- signal main_memory_dat_out : std_logic_vector(31 downto 0);
-    -- signal main_memory_cyc_in : std_logic;
-    -- signal main_memory_sel_in : std_logic_vector(3 downto 0);
-    -- signal main_memory_we_in : std_logic;
-    -- signal main_memory_rd_ack : std_logic;
-    -- signal main_memory_wr_ack : std_logic;
+     --SSBL RAM signals
+     signal ssbl_ram_adr_in : std_logic_vector(10 downto 0);
+     signal ssbl_ram_dat_in : std_logic_vector(31 downto 0);
+     signal ssbl_ram_dat_out : std_logic_vector(31 downto 0);
+     signal ssbl_ram_cyc_in : std_logic;
+     signal ssbl_ram_sel_in : std_logic_vector(3 downto 0);
+     signal ssbl_ram_we_in : std_logic;
+     
+     -- AEE RAM signals
+     signal aee_ram_adr_in : std_logic_vector(10 downto 0);
+     signal aee_ram_dat_in : std_logic_vector(31 downto 0);
+     signal aee_ram_dat_out : std_logic_vector(31 downto 0);
+     signal aee_ram_cyc_in : std_logic;
+     signal aee_ram_sel_in : std_logic_vector(3 downto 0);
+     signal aee_ram_we_in : std_logic;
+     signal aee_ram_rd_ack : std_logic;
+     signal aee_ram_wr_ack : std_logic;
+     
+     -- Main memory signals
+     signal main_memory_adr_in : std_logic_vector(12 downto 0);
+     signal main_memory_dat_in : std_logic_vector(31 downto 0);
+     signal main_memory_dat_out : std_logic_vector(31 downto 0);
+     signal main_memory_cyc_in : std_logic;
+     signal main_memory_sel_in : std_logic_vector(3 downto 0);
+     signal main_memory_we_in : std_logic;
+     signal main_memory_rd_ack : std_logic;
+     signal main_memory_wr_ack : std_logic;
     
     -- memory ack signals 
     signal read_ack_pending : std_logic;
@@ -102,8 +102,8 @@ begin
             imem_req => imem_req,
             imem_ack => imem_ack,
             dmem_address => dmem_address,
-            dmem_data_in => dmem_data_in,
-            dmem_data_out => dmem_data_out,
+            dmem_data_in => dmem_data_in,       -- arbiter input from core
+            dmem_data_out => dmem_data_out,     -- arbiter output to core
             dmem_data_size => dmem_data_size,
             dmem_read_req => dmem_read_req,
             dmem_read_ack => dmem_read_ack,
@@ -135,62 +135,62 @@ begin
     fsbl_rom_adr_in <= mem_address(fsbl_rom_adr_in'range);
     fsbl_rom_cyc_in <= '1' when selected_memory = FSBL_ROM else '0';
 
-    -- ssbl_sram_inst : entity work.ssbl_ram_wrapper
-    --     port map(
-    --         clk => clk,
-    --         rst => reset,
-    --         addr => ssbl_ram_adr_in,
-    --         din => ssbl_ram_dat_in,
-    --         dout => ssbl_ram_dat_out,
-    --         csb => ssbl_ram_cyc_in,
-    --         wmask => ssbl_ram_sel_in,
-    --         web => ssbl_ram_we_in
-    --     );
-    -- ssbl_ram_adr_in <= mem_address(ssbl_ram_adr_in'range);
-    -- ssbl_ram_dat_in <= mem_data_in;
-    -- ssbl_ram_we_in <= '1' when mem_write_req = '1' else '0';
-    -- ssbl_ram_sel_in <= mem_sel_in;
-    -- ssbl_ram_cyc_in <= '1' when selected_memory = SSBL_SRAM else '0';
-    -- 
-    -- aee_ram_inst : entity work.aee_ram_wrapper
-    --     port map(
-    --         clk => clk,
-    --         rst => reset,
-    --         addr => aee_ram_adr_in,
-    --         din => aee_ram_dat_in,
-    --         dout => aee_ram_dat_out,
-    --         csb => aee_ram_cyc_in,
-    --         wmask => aee_ram_sel_in,
-    --         web => aee_ram_we_in
-    --     );
-    -- 
-    -- aee_ram_adr_in <= mem_address(aee_ram_adr_in'range);
-    -- aee_ram_dat_in <= mem_data_in;
-    -- aee_ram_we_in <= '1' when mem_write_req = '1' else '0';
-    -- aee_ram_sel_in <= mem_sel_in;
-    -- aee_ram_cyc_in <= '1' when selected_memory = AEE_SRAM else '0';
-    -- 
-    -- main_memory_inst : entity work.main_memory_wrapper
-    --     port map(
-    --         clk => clk,
-    --         rst => reset,
-    --         addr => main_memory_adr_in,
-    --         din => main_memory_dat_in,
-    --         dout => main_memory_dat_out,
-    --         csb => main_memory_cyc_in,
-    --         wmask => main_memory_sel_in,
-    --         web => main_memory_we_in
-    --     );
-    -- main_memory_adr_in <= mem_address(main_memory_adr_in'range);
-    -- main_memory_dat_in <= mem_data_in;
-    -- main_memory_we_in <= '1' when mem_write_req = '1' else '0';
-    -- main_memory_sel_in <= mem_sel_in;
-    -- main_memory_cyc_in <= '1' when selected_memory = MAIN_MEM else '0';
+     ssbl_sram_inst : entity work.ssbl_ram_wrapper
+         port map(
+             clk => clk,
+             rst => reset,
+             addr => ssbl_ram_adr_in,
+             din => ssbl_ram_dat_in,
+             dout => ssbl_ram_dat_out,
+             csb => ssbl_ram_cyc_in,
+             wmask => ssbl_ram_sel_in,
+             web => ssbl_ram_we_in
+         );
+     ssbl_ram_adr_in <= mem_address(ssbl_ram_adr_in'range);
+     ssbl_ram_dat_in <= std_logic_vector(shift_left(unsigned(mem_data_in),get_data_shift(dmem_data_size, dmem_address)));
+     ssbl_ram_we_in <= '1' when mem_write_req = '1' else '0';
+     ssbl_ram_sel_in <= mem_sel_in;
+     ssbl_ram_cyc_in <= '1' when selected_memory = SSBL_SRAM else '0';
+     
+     aee_ram_inst : entity work.aee_ram_wrapper
+         port map(
+             clk => clk,
+             rst => reset,
+             addr => aee_ram_adr_in,
+             din => aee_ram_dat_in,
+             dout => aee_ram_dat_out,
+             csb => aee_ram_cyc_in,
+             wmask => aee_ram_sel_in,
+             web => aee_ram_we_in
+         );
+     
+     aee_ram_adr_in <= mem_address(aee_ram_adr_in'range);
+     aee_ram_dat_in <= std_logic_vector(shift_left(unsigned(mem_data_in),get_data_shift(dmem_data_size, dmem_address)));
+     aee_ram_we_in <= '1' when mem_write_req = '1' else '0';
+     aee_ram_sel_in <= mem_sel_in;
+     aee_ram_cyc_in <= '1' when selected_memory = AEE_SRAM else '0';
+     
+     main_memory_inst : entity work.main_memory_wrapper
+         port map(
+             clk => clk,
+             rst => reset,
+             addr => main_memory_adr_in,
+             din => main_memory_dat_in,
+             dout => main_memory_dat_out,
+             csb => main_memory_cyc_in,
+             wmask => main_memory_sel_in,
+             web => main_memory_we_in
+         );
+     main_memory_adr_in <= mem_address(main_memory_adr_in'range);
+     main_memory_dat_in <= std_logic_vector(shift_left(unsigned(mem_data_in),get_data_shift(dmem_data_size, dmem_address)));
+     main_memory_we_in <= '1' when mem_write_req = '1' else '0';
+     main_memory_sel_in <= mem_sel_in;
+     main_memory_cyc_in <= '1' when selected_memory = MAIN_MEM else '0';
 
     memory_controller : process (
     selected_memory, mem_read_req, 
-    fsbl_rom_dat_out--, ssbl_ram_dat_out,
-    -- aee_ram_dat_out, main_memory_dat_out
+    fsbl_rom_dat_out, ssbl_ram_dat_out,
+    aee_ram_dat_out, main_memory_dat_out
     )
     begin
        -- mem_data_out <= (others => '0');
@@ -198,30 +198,25 @@ begin
         if mem_read_req = '1' then
             case selected_memory is
                 when FSBL_ROM   => mem_data_out <= fsbl_rom_dat_out;
-        --        when SSBL_SRAM  => mem_data_out <= ssbl_ram_dat_out;
-        --        when AEE_SRAM   => mem_data_out <= aee_ram_dat_out;
-        --        when MAIN_MEM   => mem_data_out <= main_memory_dat_out;
+                when SSBL_SRAM  => mem_data_out <= ssbl_ram_dat_out;
+                when AEE_SRAM   => mem_data_out <= aee_ram_dat_out;
+                when MAIN_MEM   => mem_data_out <= main_memory_dat_out;
                 when others     => null;
             end case;
         end if;
     end process;
     
-    addr_decode_proc : process(clk)
+    addr_decode_proc : process(dmem_read_req, dmem_write_req, dmem_address, imem_req, imem_address)
     begin
-        if rising_edge(clk) then
-            if reset = '1' then
-                selected_memory <= FSBL_ROM;
-            else
-                if (dmem_read_req = '1' or dmem_write_req = '1')then
-                    selected_memory <= get_selected_memory(dmem_address);
-                elsif imem_req = '1' then
-                    selected_memory <= get_selected_memory(imem_address);
-                else
-                    selected_memory <= NON_MEM;
-                end if;
-            end if;
+        if (dmem_read_req = '1' or dmem_write_req = '1') then
+            selected_memory <= get_selected_memory(dmem_address);
+        elsif imem_req = '1' then
+            selected_memory <= get_selected_memory(imem_address);
+        else
+            selected_memory <= NON_MEM;
         end if;
     end process;
+
 
     ack_proc:process (clk)
     begin
@@ -240,7 +235,7 @@ begin
                 mem_write_ack <= '0';
 
                 case selected_memory is
-                    when FSBL_ROM => -- MAIN_MEM | SSBL_SRAM | AEE_SRAM |
+                    when MAIN_MEM | SSBL_SRAM | AEE_SRAM | FSBL_ROM =>
                          if mem_write_req = '1' and write_ack_pending = '0' then
                             mem_write_ack <= '1';
                             write_ack_pending <= '1';

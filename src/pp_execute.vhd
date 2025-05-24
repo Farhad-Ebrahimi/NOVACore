@@ -269,8 +269,8 @@ begin
         rs2_addr <= rs2_addr_in;
         alu_x_src <= alu_x_src_in;
         alu_y_src <= alu_y_src_in;
---        rs1_forwarded_reg <= rs1_forwarded;
---        rs2_forwarded_reg <= rs2_forwarded;
+        rs1_forwarded_reg <= rs1_forwarded;
+        rs2_forwarded_reg <= rs2_forwarded;
       end if;
     end if;
   end process update_address;
@@ -586,7 +586,7 @@ begin
 
     );
   alu_x_forward : process (
-    --stall_exe_stg1,
+    stall_exe_stg1, rs1_forwarded_reg,
     alu_op_to_stg3, alu_op_to_forwarding_stg3,
     rd_write_to_stg3, rd_addr_to_stg3,
     rs1_addr, bw_alu_result_to_stg3,
@@ -596,7 +596,7 @@ begin
     rs1_data
     )
   begin
-    --if (stall_exe_stg1 ='0') then
+    if (stall_exe_stg1 ='0') then
         if rd_write_to_stg3 = '1' and rd_addr_to_stg3 = rs1_addr and rd_addr_to_stg3 /= b"00000" and (not is_csd_op(alu_op_to_stg3)) then
           rs1_forwarded <= bw_alu_result_to_stg3;
         elsif rd_write_to_forwarding_stg3 = '1' and rd_addr_to_forwarding_stg3 = rs1_addr and rd_addr_to_forwarding_stg3 /= b"00000" and (not is_csd_op(alu_op_to_forwarding_stg3)) then
@@ -608,13 +608,13 @@ begin
         else
           rs1_forwarded <= rs1_data;
         end if;
---    else
---        rs1_forwarded <= rs1_forwarded_reg;
---    end if;
+    else
+        rs1_forwarded <= rs1_forwarded_reg;
+    end if;
   end process alu_x_forward;
 
    alu_y_forward : process (
---   stall_exe_stg1,
+   stall_exe_stg1, rs2_forwarded_reg,
    alu_op_to_stg3, alu_op_to_forwarding_stg3,
    rd_write_to_stg3, rd_addr_to_stg3, rs2_addr, 
    bw_alu_result_to_stg3, rd_write_to_forwarding_stg3, 
@@ -622,7 +622,7 @@ begin
    mem_rd_write, mem_rd_addr, mem_rd_value, wb_rd_write, 
    wb_rd_addr, wb_rd_value, rs2_data)
  begin
-     --if (stall_exe_stg1 ='0') then
+     if (stall_exe_stg1 ='0') then
         if rd_write_to_stg3 = '1' and rd_addr_to_stg3 = rs2_addr and rd_addr_to_stg3 /= b"00000" and (not is_csd_op(alu_op_to_stg3))then
           rs2_forwarded <= bw_alu_result_to_stg3;
         elsif rd_write_to_forwarding_stg3 = '1' and rd_addr_to_forwarding_stg3 = rs2_addr and rd_addr_to_forwarding_stg3 /= b"00000" and (not is_csd_op(alu_op_to_forwarding_stg3)) then
@@ -634,9 +634,9 @@ begin
         else
           rs2_forwarded <= rs2_data;
         end if;
---    else                           
---        rs2_forwarded <= rs2_forwarded_reg;
---    end if;                        
+    else                           
+        rs2_forwarded <= rs2_forwarded_reg;
+    end if;                        
  end process alu_y_forward;
 
   detect_load_hazard : process (

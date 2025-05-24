@@ -123,50 +123,12 @@ architecture behaviour of toplevel is
 	signal error_we_in   : std_logic;
 	signal error_ack_out : std_logic;
 
-	-- FSBL ROM signals:
---	signal fsbl_rom_adr_in  : std_logic_vector(9 downto 0);
---	signal fsbl_rom_dat_out : std_logic_vector(31 downto 0);
---	signal fsbl_rom_cyc_in  : std_logic;
---	signal fsbl_rom_stb_in  : std_logic;
---	signal fsbl_rom_sel_in  : std_logic_vector(3 downto 0);
---	signal fsbl_rom_ack_out : std_logic;
-
-	-- SSBL RAM signals:
-	signal ssbl_ram_adr_in  : std_logic_vector(10 downto 0);
-	signal ssbl_ram_dat_in  : std_logic_vector(31 downto 0);
-	signal ssbl_ram_dat_out : std_logic_vector(31 downto 0);
-	signal ssbl_ram_cyc_in  : std_logic;
-	signal ssbl_ram_stb_in  : std_logic;
-	signal ssbl_ram_sel_in  : std_logic_vector(3 downto 0);
-	signal ssbl_ram_we_in   : std_logic;
-	signal ssbl_ram_ack_out : std_logic;
-	
-	-- AEE RAM signals:
-	signal aee_ram_adr_in  : std_logic_vector(10 downto 0);
-	signal aee_ram_dat_in  : std_logic_vector(31 downto 0);
-	signal aee_ram_dat_out : std_logic_vector(31 downto 0);
-	signal aee_ram_cyc_in  : std_logic;
-	signal aee_ram_stb_in  : std_logic;
-	signal aee_ram_sel_in  : std_logic_vector(3 downto 0);
-	signal aee_ram_we_in   : std_logic;
-	signal aee_ram_ack_out : std_logic;
-
-	-- Main memory signals:
-	signal main_memory_adr_in : std_logic_vector(12 downto 0);
-	signal main_memory_dat_in : std_logic_vector(31 downto 0);
-	signal main_memory_dat_out : std_logic_vector(31 downto 0);
-	signal main_memory_cyc_in  : std_logic;
-	signal main_memory_stb_in  : std_logic;
-	signal main_memory_sel_in  : std_logic_vector(3 downto 0);
-	signal main_memory_we_in   : std_logic;
-	signal main_memory_ack_out : std_logic;
-
 	-- Selected peripheral on the interconnect:
 	type intercon_peripheral_type is (
 		PERIPHERAL_TIMER0, PERIPHERAL_TIMER1,
-		PERIPHERAL_UART0,PERIPHERAL_SSBL_RAM,
-		PERIPHERAL_AEE_RAM, PERIPHERAL_INTERCON,
-		PERIPHERAL_MAIN_MEMORY, PERIPHERAL_ERROR, PERIPHERAL_NONE);
+		PERIPHERAL_UART0, PERIPHERAL_INTERCON,
+		--PERIPHERAL_SSBL_RAM, PERIPHERAL_FSBL_ROM, PERIPHERAL_AEE_RAM, PERIPHERAL_MAIN_MEMORY, 
+		PERIPHERAL_ERROR, PERIPHERAL_NONE);
 	signal intercon_peripheral : intercon_peripheral_type := PERIPHERAL_NONE;
 
 	-- Interconnect address decoder state:
@@ -183,67 +145,46 @@ begin
 			others => '0'
 		);
 
-	address_decoder: process(system_clk)
-	begin
-		if rising_edge(system_clk) then
-			if reset = '1' then
-				intercon_peripheral <= PERIPHERAL_NONE;
-				intercon_busy <= false;
-			else
-				if not intercon_busy then
-					if processor_cyc_out = '1' then
-						intercon_busy <= true;
-						if processor_adr_out(31 downto 16) = x"0000"
-							or processor_adr_out(31 downto 16) = x"0001" then -- Main memory space
-								intercon_peripheral <= PERIPHERAL_MAIN_MEMORY;
-						elsif processor_adr_out(31 downto 16) = x"c000" then -- Peripheral memory space
-							case processor_adr_out(15 downto 12) is
-								when x"0" =>
-									intercon_peripheral <= PERIPHERAL_TIMER0;
-								when x"1" =>
-									intercon_peripheral <= PERIPHERAL_TIMER1;
-								when x"2" =>
-									intercon_peripheral <= PERIPHERAL_UART0;
---								when x"3" =>
---									intercon_peripheral <= PERIPHERAL_UART1;
-								when x"5" =>
-									intercon_peripheral <= PERIPHERAL_INTERCON;
-								when others => -- Invalid address - delegated to the error peripheral
-									intercon_peripheral <= PERIPHERAL_ERROR;
-							end case;
-							elsif processor_adr_out(31 downto 16) = x"ffff" then  -- Firmware memory space
-								case processor_adr_out(15 downto 10) is
---									when b"100000" =>  -- FSBL ROM (0xffff8000 - 0xffff83ff)
---										intercon_peripheral <= PERIPHERAL_FSBL_ROM;
-									when b"100001" | b"100010" =>  -- SSBL ROM (0xffff8400 - 0xffff8bff)
-										intercon_peripheral <= PERIPHERAL_SSBL_RAM;
-									when b"100011" | b"100100" =>  -- AEE RAM (0xffff8c00 - 0xffff93ff)
-										intercon_peripheral <= PERIPHERAL_AEE_RAM;
-									when others =>
-										null; 
-								end case;
-						else
-							intercon_peripheral <= PERIPHERAL_ERROR;
-						end if;
-					else
-						intercon_peripheral <= PERIPHERAL_NONE;
-					end if;
-				else
-					if processor_cyc_out = '0' then
-						intercon_busy <= false;
-						intercon_peripheral <= PERIPHERAL_NONE;
-					end if;
-				end if;
-			end if;
-		end if;
-	end process address_decoder;
+	address_decoder : process(system_clk)
+    begin
+        if rising_edge(system_clk) then
+            if reset = '1' then
+                intercon_peripheral <= PERIPHERAL_NONE;
+                intercon_busy <= false;
+            else
+                if not intercon_busy then
+                    if processor_cyc_out = '1' then
+                        intercon_busy <= true;
+                        if processor_adr_out(31 downto 16) = x"C000" then  -- Peripheral space
+                            case processor_adr_out(15 downto 12) is
+                                when x"0" => intercon_peripheral <= PERIPHERAL_TIMER0;
+                                when x"1" => intercon_peripheral <= PERIPHERAL_TIMER1;
+                                when x"2" => intercon_peripheral <= PERIPHERAL_UART0;
+                                -- when x"3" => intercon_peripheral <= PERIPHERAL_UART1;
+                                when x"5" => intercon_peripheral <= PERIPHERAL_INTERCON;
+                                when others => intercon_peripheral <= PERIPHERAL_ERROR;
+                            end case;
+                        else
+                            intercon_peripheral <= PERIPHERAL_NONE;
+                        end if;
+                    else
+                        if processor_cyc_out = '0' then
+                            intercon_busy <= false;
+                            intercon_peripheral <= PERIPHERAL_NONE;
+                        end if;
+                    end if;
+                end if;
+            end if;
+         end if;
+    end process;
 
 	processor_intercon: process(intercon_peripheral,
 		timer0_ack_out, timer0_dat_out, timer1_ack_out, timer1_dat_out,
 		uart0_ack_out, uart0_dat_out, -- uart1_ack_out, uart1_dat_out,
-		intercon_ack_out, intercon_dat_out, error_ack_out,
-		aee_ram_ack_out, aee_ram_dat_out,
-		main_memory_ack_out, main_memory_dat_out)
+		intercon_ack_out, intercon_dat_out, error_ack_out
+		-- aee_ram_ack_out, aee_ram_dat_out,
+		-- main_memory_ack_out, main_memory_dat_out
+		)
 	begin
 		case intercon_peripheral is
 			when PERIPHERAL_TIMER0 =>
@@ -261,21 +202,9 @@ begin
 			when PERIPHERAL_INTERCON =>
 				processor_ack_in <= intercon_ack_out;
 				processor_dat_in <= intercon_dat_out;
---			when PERIPHERAL_FSBL_ROM =>
---				processor_ack_in <= fsbl_rom_ack_out;
---				processor_dat_in <= fsbl_rom_dat_out;
-			when PERIPHERAL_SSBL_RAM =>
-				processor_ack_in <= ssbl_ram_ack_out;
-				processor_dat_in <= ssbl_ram_dat_out;
-			when PERIPHERAL_AEE_RAM =>
-				processor_ack_in <= aee_ram_ack_out;
-				processor_dat_in <= aee_ram_dat_out;
 			when PERIPHERAL_ERROR =>
 				processor_ack_in <= error_ack_out;
 				processor_dat_in <= (others => '0');
-			when PERIPHERAL_MAIN_MEMORY =>
-				processor_ack_in <= main_memory_ack_out;
-				processor_dat_in <= main_memory_dat_out;
 			when PERIPHERAL_NONE =>
 				processor_ack_in <= '0';
 				processor_dat_in <= (others => '0');
@@ -293,8 +222,7 @@ begin
 
 	processor: entity work.pp_novacore
 		generic map(
-			RESET_ADDRESS => x"ffff8000",
-			ICACHE_ENABLE => false
+			RESET_ADDRESS => x"ffff8000"
 		) port map(
 			clk => system_clk,
 			reset => reset,
@@ -428,84 +356,7 @@ begin
 	error_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_ERROR else '0';
 	error_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_ERROR else '0';
 
---	fsbl_rom: entity work.fsbl_rom_wrapper
---		generic map(
---			MEMORY_SIZE => 1024
---		) port map(
---			clk => system_clk,
---			reset => reset,
---			wb_adr_in => fsbl_rom_adr_in,
---			wb_dat_out => fsbl_rom_dat_out,
---			wb_cyc_in => fsbl_rom_cyc_in,
---			wb_stb_in => fsbl_rom_stb_in,
---			wb_sel_in => fsbl_rom_sel_in,
---			wb_ack_out => fsbl_rom_ack_out
---		);
---	fsbl_rom_adr_in <= processor_adr_out(fsbl_rom_adr_in'range);
---	fsbl_rom_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_FSBL_ROM else '0';
---	fsbl_rom_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_FSBL_ROM else '0';
---	fsbl_rom_sel_in <= processor_sel_out;
-
-	ssbl_ram_instance : entity work.ssbl_ram_wrapper
-		port map(
-			clk => system_clk,
-			rst => reset,
-			addr => ssbl_ram_adr_in,
-			din => ssbl_ram_dat_in,
-			dout => ssbl_ram_dat_out,
-			csb => ssbl_ram_cyc_in,
-			stb => ssbl_ram_stb_in,
-			wmask => ssbl_ram_sel_in,
-			web => ssbl_ram_we_in,
-			ack_out => ssbl_ram_ack_out
-		);
-	ssbl_ram_adr_in <= processor_adr_out(ssbl_ram_adr_in'range);
-	ssbl_ram_dat_in <= processor_dat_out;
-	ssbl_ram_we_in  <= processor_we_out;
-	ssbl_ram_sel_in <= processor_sel_out;
-	ssbl_ram_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_SSBL_RAM else '0';
-	ssbl_ram_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_SSBL_RAM else '0';
-
-	aee_ram_instance : entity work.aee_ram_wrapper
-		port map(
-			clk => system_clk,
-			rst => reset,
-			addr => aee_ram_adr_in,
-			din => aee_ram_dat_in,
-			dout => aee_ram_dat_out,
-			csb => aee_ram_cyc_in,
-			stb => aee_ram_stb_in,
-			wmask => aee_ram_sel_in,
-			web => aee_ram_we_in,
-			ack_out => aee_ram_ack_out
-		);
-	aee_ram_adr_in <= processor_adr_out(aee_ram_adr_in'range);
-	aee_ram_dat_in <= processor_dat_out;
-	aee_ram_we_in  <= processor_we_out;
-	aee_ram_sel_in <= processor_sel_out;
-	aee_ram_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_AEE_RAM else '0';
-	aee_ram_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_AEE_RAM else '0';
-
-	main_memory_instance : entity work.main_memory_wrapper
-		port map(
-			clk => system_clk,
-			rst => reset,
-			addr => main_memory_adr_in,
-			din => main_memory_dat_in,
-			dout => main_memory_dat_out,
-			csb => main_memory_cyc_in,
-			stb => main_memory_stb_in,
-			wmask => main_memory_sel_in,
-			web => main_memory_we_in,
-			ack_out => main_memory_ack_out
-		);
-	main_memory_adr_in <= processor_adr_out(main_memory_adr_in'range);
-	main_memory_dat_in <= processor_dat_out;
-	main_memory_we_in  <= processor_we_out;
-	main_memory_sel_in <= processor_sel_out;
-	main_memory_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_MAIN_MEMORY else '0';
-	main_memory_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_MAIN_MEMORY else '0';
-
+	
 end architecture behaviour;
 
 

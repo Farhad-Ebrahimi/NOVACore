@@ -75,9 +75,10 @@ architecture behaviour of pp_decode is
 begin
 
 	immediate <= immediate_value;
-    alu_op <= alu_op_reg;
-    rd_write <= rd_write_reg;
-	
+	alu_op <= alu_op_reg;
+	rd_write <= rd_write_reg;
+
+	-- Instruction fetch and hold
 	get_instruction: process(clk)
 	begin
 		if rising_edge(clk) then
@@ -86,11 +87,8 @@ begin
 				pc <= RESET_ADDRESS;
 				count_instruction <= '0';
 			elsif stall = '1' then
-				count_instruction <= '0';
---				if ( instruction = instruction_data and instruction /= RISCV_NOP) then
---				    instruction <= RISCV_NOP;
---				end if;
-			elsif flush = '1' or instruction_ready = '0' then-- or insert_nop = '1' then
+				count_instruction <= '0'; -- hold PC and instruction
+			elsif flush = '1' or instruction_ready = '0' then
 				instruction <= RISCV_NOP;
 				count_instruction <= '0';
 			else
@@ -119,6 +117,7 @@ begin
 			immediate => immediate_value
 		);
 
+	-- CSR address decoding
 	decode_csr_addr: process(immediate_value)
 	begin
 		if immediate_value(11 downto 0) = CSR_EPC_MRET then
@@ -128,6 +127,7 @@ begin
 		end if;
 	end process decode_csr_addr;
 
+	-- Control unit instance
 	control_unit: entity work.pp_control_unit
 		port map(
 			opcode => instruction(6 downto 2),
@@ -146,26 +146,27 @@ begin
 			csr_write => csr_write,
 			csr_imm => csr_use_imm
 		);
-		
-		detect_nop_insertion : process (clk)
-        begin
-          if rising_edge(clk) then
-            if reset = '1' then
-              insert_nop    <= '0';
-              nop_triggered <= '0';
+
+	-- NOP insertion detection
+	detect_nop_insertion : process (clk)
+	begin
+		if rising_edge(clk) then
+			if reset = '1' then
+				insert_nop    <= '0';
+				nop_triggered <= '0';
         
-            else
+			else
               
-              if (rd_write_reg = '1' and rd_addr_reg /= b"00000" and is_csd_op(alu_op_reg) and nop_triggered = '0') then
-                insert_nop    <= '1';
-                nop_triggered <= '1';
-              else
-                insert_nop    <= '0';
-                nop_triggered <= '0'; 
-              end if;
+				if (rd_write_reg = '1' and rd_addr_reg /= b"00000" and is_csd_op(alu_op_reg) and nop_triggered = '0') then
+					insert_nop    <= '1';
+					nop_triggered <= '1';
+				else
+					insert_nop    <= '0';
+					nop_triggered <= '0';
+				end if;
         
-            end if;
-          end if;
-        end process;
+			end if;
+		end if;
+	end process;
 
 end architecture behaviour;

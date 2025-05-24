@@ -269,7 +269,8 @@ begin
 
       end if;
     end if;
-  end process pipeline_register;
+end process;
+
 
   set_data_size : process (mem_size)
   begin

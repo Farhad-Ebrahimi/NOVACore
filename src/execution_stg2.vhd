@@ -248,7 +248,6 @@ begin
 
   csd_alu_instance : entity work.csd_alu
     port map(
-      y         => alu_y,
       xs        => x_sign(32 downto 0),
       xd        => x_data(32 downto 0),
       ys        => y_sign(32 downto 0),

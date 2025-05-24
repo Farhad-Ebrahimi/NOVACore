@@ -8,7 +8,7 @@ entity nv_arbiter is
     port (
         clk : in std_logic;
         reset : in std_logic;
-
+        
         -- Instruction memory interface
         imem_address : in std_logic_vector(31 downto 0);
         imem_data : out std_logic_vector(31 downto 0);
@@ -24,7 +24,7 @@ entity nv_arbiter is
         dmem_read_ack : out std_logic;
         dmem_write_req : in std_logic;
         dmem_write_ack : out std_logic;
-
+        
         -- Memory controller interface
         mem_address : out std_logic_vector(31 downto 0);
         mem_data_in : out std_logic_vector(31 downto 0);
@@ -141,7 +141,7 @@ begin
 
                if prev_state = M1_BUSY then
                  if mem_read_ack = '1' then
-                   r_dmem_data_out  <= mem_data_out;
+                   r_dmem_data_out  <= std_logic_vector(shift_right(unsigned(mem_data_out),get_data_shift(dmem_data_size, dmem_address)));
                    r_dmem_read_ack  <= '1';
                  end if;
                  if mem_write_ack = '1' then

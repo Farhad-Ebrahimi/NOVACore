@@ -61,6 +61,10 @@ architecture behaviour of pp_core is
 
 	------- Stall signals -------
 	signal stall_if, stall_id, stall_ex, stall_mem : STD_LOGIC;
+	
+	-- delibrate stall
+	signal stall_counter : integer range 0 to 2 := 0;
+	signal delibrate_stall : std_logic;
 
 	-- Signals used to determine if an instruction should be counted
 	-- by the instret counter:
@@ -170,7 +174,7 @@ architecture behaviour of pp_core is
 
 begin
 
-	stall_if <= stall_id;
+	stall_if <= delibrate_stall or stall_id;
 	stall_id <= stall_ex;
 	stall_ex <= hazard_detected or stall_mem;
 	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and dmem_read_ack = '0')
@@ -258,7 +262,6 @@ begin
 			stall => stall_if,
 			flush => flush_if,
 			branch => branch_taken,
-			branch_result => branch_result,
 			jump_inst_id => jump_inst_id,
 			jump_inst_ie => jump_inst_ie,
 			pcid_bpu => id_pc,
@@ -467,5 +470,30 @@ begin
 			rd_data_in => mem_rd_data,
 			rd_data_out => wb_rd_data
 		);
+		
+		
+ --  delibrate stall because of Stor instruction 
+    stall_proc : process(clk)
+    begin
+        if rising_edge(clk) then
+            if reset = '1' then
+                delibrate_stall <= '0';
+                stall_counter <= 0;
+            else
+                if id_mem_op = MEMOP_TYPE_STORE and stall_counter = 0 then
+                    delibrate_stall <= '1';
+                    stall_counter <= 1;
+                elsif stall_counter = 1 then
+                    delibrate_stall <= '1';
+                    stall_counter <= 2;
+                elsif stall_counter = 2 then
+                    delibrate_stall <= '0';
+                    stall_counter <= 0;
+                else
+                    delibrate_stall <= '0';
+                end if;
+            end if;
+        end if;
+    end process;
 
 end architecture behaviour;
