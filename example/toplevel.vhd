@@ -146,35 +146,35 @@ begin
 		);
 
 	address_decoder : process(system_clk)
-    begin
-        if rising_edge(system_clk) then
-            if reset = '1' then
-                intercon_peripheral <= PERIPHERAL_NONE;
-                intercon_busy <= false;
-            else
-                if not intercon_busy then
-                    if processor_cyc_out = '1' then
-                        intercon_busy <= true;
+	begin
+		if rising_edge(system_clk) then
+			if reset = '1' then
+				intercon_peripheral <= PERIPHERAL_NONE;
+				intercon_busy <= false;
+			else
+				if not intercon_busy then
+					if processor_cyc_out = '1' then
+						intercon_busy <= true;
                         if processor_adr_out(31 downto 16) = x"C000" then  -- Peripheral space
-                            case processor_adr_out(15 downto 12) is
+							case processor_adr_out(15 downto 12) is
                                 when x"0" => intercon_peripheral <= PERIPHERAL_TIMER0;
                                 when x"1" => intercon_peripheral <= PERIPHERAL_TIMER1;
                                 when x"2" => intercon_peripheral <= PERIPHERAL_UART0;
                                 -- when x"3" => intercon_peripheral <= PERIPHERAL_UART1;
                                 when x"5" => intercon_peripheral <= PERIPHERAL_INTERCON;
                                 when others => intercon_peripheral <= PERIPHERAL_ERROR;
-                            end case;
-                        else
-                            intercon_peripheral <= PERIPHERAL_NONE;
-                        end if;
-                    else
-                        if processor_cyc_out = '0' then
-                            intercon_busy <= false;
-                            intercon_peripheral <= PERIPHERAL_NONE;
-                        end if;
-                    end if;
-                end if;
-            end if;
+								end case;
+						else
+						intercon_peripheral <= PERIPHERAL_NONE;
+					end if;
+				else
+					if processor_cyc_out = '0' then
+						intercon_busy <= false;
+						intercon_peripheral <= PERIPHERAL_NONE;
+					end if;
+				end if;
+			end if;
+		end if;
          end if;
     end process;
 
@@ -356,7 +356,7 @@ begin
 	error_cyc_in <= processor_cyc_out when intercon_peripheral = PERIPHERAL_ERROR else '0';
 	error_stb_in <= processor_stb_out when intercon_peripheral = PERIPHERAL_ERROR else '0';
 
-	
+
 end architecture behaviour;
 
 

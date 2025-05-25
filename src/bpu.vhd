@@ -56,7 +56,7 @@ architecture Behavioral of bpu is
 
 begin
 
-    wrong_prdt <= '1' when ((branch_history /= actual_taken) or
+    wrong_prdt <= '1' when stall= '0' and ((branch_history /= actual_taken) or
         (branch_history = '1' and branch_history = actual_taken and prdt_addr /= actual_target))
         else '0';
 
@@ -114,8 +114,9 @@ begin
                 branch_history <= '0';
                 prdt_addr <= (others => '0');
             else
-                branch_history <= '0';
+               
                 if stall = '0' then
+                branch_history <= '0';
                 prdt_addr <= (others => '0');
                 if jump_inst_id = '1'and wrong_prdt = '0' then
                     if btb_valid(index_id) = '1' and btb_tag(index_id) = pc_id(31 downto INDEX_WIDTH + 2) then
@@ -132,7 +133,7 @@ begin
     -- Making Prediction: compute output target
     ----------------------------------------------------------------------------
 
-    Making_prediction : process (reset, stall, pc_if, pcif_plus4, btb_valid, btb_tag, wrong_prdt, actual_target, actual_taken, pcie_plus4, next_history, next_address)
+    Making_prediction : process (reset, pc_if, pcif_plus4, btb_valid, btb_tag, wrong_prdt, actual_target, actual_taken, pcie_plus4, next_history, next_address)
     begin
         if reset = '1' then
             trg_addr_o <= RESET_ADDRESS;

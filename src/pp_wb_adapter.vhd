@@ -101,7 +101,7 @@ begin
 							state <= READ_WAIT_ACK;
 						end if;
 					when READ_WAIT_ACK =>
-						if wb_inputs.ack = '1' then
+						if wb_inputs.ack = '1' and (not is_mem_addr(mem_address)) then
 							mem_data_out <= std_logic_vector(shift_right(unsigned(wb_inputs.dat),get_data_shift(mem_data_size, mem_address)));
 							wb_outputs.cyc <= '0';
 							wb_outputs.stb <= '0';
@@ -109,7 +109,7 @@ begin
 							state <= IDLE;
 						end if;
 					when WRITE_WAIT_ACK =>
-						if wb_inputs.ack = '1' then
+						if wb_inputs.ack = '1' and (not is_mem_addr(mem_address)) then
 							wb_outputs.cyc <= '0';
 							wb_outputs.stb <= '0';
 							wb_outputs.we <= '0';
