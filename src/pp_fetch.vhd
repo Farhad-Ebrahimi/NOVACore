@@ -57,7 +57,7 @@ begin
 
 	do_flush <= wrong_prediction;
 	
-	instruction_data <= imem_data_in when stall = '0' else imem_data;
+	instruction_data <= imem_data_in when ( stall = '0' and imem_ack='1' ) else imem_data;
 	instruction_ready <= imem_ack and (not stall) and (not cancel_fetch);
 	instruction_address <= pc;
 
@@ -78,7 +78,7 @@ begin
 				else
 					pc <= pc_next;
 				end if;
-				if stall = '0' then
+				if stall = '0' and imem_ack = '1' then
 				    imem_data <= imem_data_in;
 				end if;
 			end if;

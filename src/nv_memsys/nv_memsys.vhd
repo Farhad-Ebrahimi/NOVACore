@@ -59,6 +59,7 @@ architecture rtl of nv_memsys is
      signal ssbl_ram_cyc_in : std_logic;
      signal ssbl_ram_sel_in : std_logic_vector(3 downto 0);
      signal ssbl_ram_we_in : std_logic;   
+     
      -- AEE RAM signals
      signal aee_ram_adr_in : std_logic_vector(10 downto 0);
      signal aee_ram_dat_in : std_logic_vector(31 downto 0);
@@ -68,6 +69,7 @@ architecture rtl of nv_memsys is
      signal aee_ram_we_in : std_logic;
      signal aee_ram_rd_ack : std_logic;
      signal aee_ram_wr_ack : std_logic;   
+     
      -- Main memory signals
      signal main_memory_adr_in : std_logic_vector(12 downto 0);
      signal main_memory_dat_in : std_logic_vector(31 downto 0);
@@ -84,9 +86,6 @@ architecture rtl of nv_memsys is
     signal mem_read_ack_pending : std_logic;
 
 begin
-
---    -- pending read_ack
---    mem_read_ack_pending <= mem_read_ack and mem_read_req;
     
     -- Arbiter
     arbiter_inst : entity work.nv_arbiter
@@ -110,7 +109,7 @@ begin
             arb_address => mem_address,
             arb_data_in => mem_data_out,
             arb_data_out => mem_data_in,
-            arb_sel_in => mem_sel_in,
+            arb_sel_out => mem_sel_in,
             arb_read_req => mem_read_req,
             arb_read_ack => mem_read_ack,
             arb_write_req => mem_write_req,
@@ -182,6 +181,17 @@ begin
      main_memory_we_in <= '1' when mem_write_req = '1' else '0';
      main_memory_sel_in <= mem_sel_in;
      main_memory_cyc_in <= '1' when selected_memory = MAIN_MEM else '0';
+     
+    addr_decode_proc : process(dmem_read_req, dmem_write_req, dmem_address, imem_req, imem_address)
+    begin
+        if (dmem_read_req = '1' or dmem_write_req = '1') then
+            selected_memory <= get_selected_memory(dmem_address);
+        elsif imem_req = '1' then
+            selected_memory <= get_selected_memory(imem_address);
+        else
+            selected_memory <= NON_MEM;
+        end if;
+    end process;
 
     
     memory_controller : process (
@@ -201,16 +211,7 @@ begin
         end if;
     end process;
     
-    addr_decode_proc : process(dmem_read_req, dmem_write_req, dmem_address, imem_req, imem_address)
-    begin
-        if (dmem_read_req = '1' or dmem_write_req = '1') then
-            selected_memory <= get_selected_memory(dmem_address);
-        elsif imem_req = '1' then
-            selected_memory <= get_selected_memory(imem_address);
-        else
-            selected_memory <= NON_MEM;
-        end if;
-    end process;
+    
     
     ack_proc:process (clk)
     begin

@@ -37,7 +37,7 @@ entity pp_novacore is
 		wb_sel_out : out std_logic_vector(3 downto 0);
 		wb_cyc_out : out std_logic;
 		wb_stb_out : out std_logic;
-		wb_we_out  : out std_logic;
+		wb_we_out : out std_logic;
 		wb_dat_out : out std_logic_vector(31 downto 0);
 		wb_dat_in : in std_logic_vector(31 downto 0);
 		wb_ack_in : in std_logic
@@ -49,7 +49,7 @@ architecture behaviour of pp_novacore is
 	-- Instruction memory signals:
 	signal imem_address : std_logic_vector(31 downto 0);
 	signal imem_data : std_logic_vector(31 downto 0);
-	signal imem_req, imem_ack, imem_ack_control : std_logic;
+	signal imem_req, imem_ack: std_logic;
 
 	-- Data memory signals:
 	signal dmem_address : std_logic_vector(31 downto 0);
@@ -72,7 +72,7 @@ architecture behaviour of pp_novacore is
 
 	-- keep ack in nv_memsys high until stall gets 0 
 	signal processor_stalled : std_logic;
-	
+
 	-- Instruction memory signals (Wishbone adapter)
 	signal imem_data_wb : std_logic_vector(31 downto 0);
 	signal imem_ack_wb : std_logic;
@@ -86,7 +86,7 @@ architecture behaviour of pp_novacore is
 	signal imem_inputs, dmem_if_inputs : wishbone_master_inputs;
 	signal imem_outputs, dmem_if_outputs : wishbone_master_outputs;
 
-    -- Arbiter signals:
+	-- Arbiter signals:
 	signal m1_inputs, m2_inputs : wishbone_master_inputs;
 	signal m1_outputs, m2_outputs : wishbone_master_outputs;
 
@@ -96,7 +96,7 @@ begin
 		generic map(
 			PROCESSOR_ID => PROCESSOR_ID,
 			RESET_ADDRESS => RESET_ADDRESS
-		) port map(
+			) port map(
 			clk => clk,
 			reset => reset,
 			imem_address => imem_address,
@@ -117,19 +117,19 @@ begin
 
 	-- nv_memsys: instruction & data memory
 	instance_memsys : entity work.nv_memsys
-			generic map(
+		generic map(
 			RESET_ADDRESS => RESET_ADDRESS
 		)
 		port map(
-				clk => clk,
-				reset => reset,
+			clk => clk,
+			reset => reset,
 			imem_address => imem_address,
 			imem_data => imem_data_memsys,
 			imem_req => imem_req,
 			imem_ack => imem_ack_memsys,
 			dmem_address => dmem_address,
-			dmem_data_in => dmem_data_out, -- mem input
-			dmem_data_out => dmem_data_in_memsys, -- mem output
+			dmem_data_in => dmem_data_out,
+			dmem_data_out => dmem_data_in_memsys,
 			dmem_data_size => dmem_data_size,
 			dmem_read_req => dmem_read_req,
 			dmem_read_ack => dmem_read_ack_memsys,
@@ -139,23 +139,23 @@ begin
 
 	-- IMEM Wb adapter
 	imem_if : entity work.pp_wb_adapter
-			port map(
-				clk => clk,
-				reset => reset,
-				mem_address => imem_address,
-				mem_data_in => (others => '0'),
+		port map(
+			clk => clk,
+			reset => reset,
+			mem_address => imem_address,
+			mem_data_in => (others => '0'),
 			mem_data_out => imem_data_wb,
-				mem_data_size => (others => '0'),
-				mem_read_req => imem_req,
+			mem_data_size => (others => '0'),
+			mem_read_req => imem_req,
 			mem_read_ack => imem_ack_wb,
-				mem_write_req => '0',
-				mem_write_ack => open,
+			mem_write_req => '0',
+			mem_write_ack => open,
 			wb_inputs => imem_inputs,
 			wb_outputs => imem_outputs
-			);
+		);
 
-		dmem_if_inputs <= m1_inputs;
-		m1_outputs <= dmem_if_outputs;
+	dmem_if_inputs <= m1_inputs;
+	m1_outputs <= dmem_if_outputs;
 
 	imem_inputs <= m2_inputs;
 	m2_outputs <= imem_outputs;
@@ -196,39 +196,43 @@ begin
 		);
 
 	process (clk)
-	begin
-		if rising_edge(clk) then
-			if reset = '1' then
-				imem_data <= (others => '0');
-				imem_ack <= '0';
-				dmem_data_in <= (others => '0');
-				dmem_read_ack <= '0';
-				dmem_write_ack <= '0';
-			else
-				-- Instruction memory mux
-				if is_mem_addr(imem_address) then
-					imem_data <= imem_data_memsys;
-					imem_ack <= imem_ack_memsys;
-				else
-					imem_data <= imem_data_wb;
-					imem_ack <= imem_ack_wb;
-				end if;
-
-				-- Data memory mux
-				if is_mem_addr(dmem_address) then
-					dmem_data_in <= dmem_data_in_memsys;
-					dmem_read_ack <= dmem_read_ack_memsys;
-					dmem_write_ack <= dmem_write_ack_memsys;
-				else
-					dmem_data_in <= dmem_data_in_wb;
-					dmem_read_ack <= dmem_read_ack_wb;
-					dmem_write_ack <= dmem_write_ack_wb;
-				end if;
-			end if;
-		end if;
-	end process;
-	
-	imem_ack_control <= imem_ack when (dmem_read_req = '0' and dmem_write_req = '0') else '0';
+    begin
+    	if rising_edge(clk) then
+    		if reset = '1' then
+    			imem_data <= (others => '0');
+    			imem_ack <= '0';
+    			dmem_data_in <= (others => '0');
+    			dmem_read_ack <= '0';
+    			dmem_write_ack <= '0';
+    		else
+    			if (dmem_read_req = '1' or dmem_write_req = '1') then
+    				if is_mem_addr(dmem_address) then
+    					dmem_data_in <= dmem_data_in_memsys;
+    					dmem_read_ack <= dmem_read_ack_memsys;
+    					dmem_write_ack <= dmem_write_ack_memsys;
+    				else
+    					dmem_data_in <= dmem_data_in_wb;
+    					dmem_read_ack <= dmem_read_ack_wb;
+    					dmem_write_ack <= dmem_write_ack_wb;
+    				end if;
+    				-- imem_data <= (others => '0'); keep previous value
+    				imem_ack <= '0';
+    
+    			else
+    				-- dmem_data_in <= (others => '0'); keep previous value
+    				dmem_read_ack <= '0';
+    				dmem_write_ack <= '0';
+    
+    				if is_mem_addr(imem_address) then
+    					imem_data <= imem_data_memsys;
+    					imem_ack <= imem_ack_memsys;
+    				else
+    					imem_data <= imem_data_wb;
+    					imem_ack <= imem_ack_wb;
+    				end if;
+    			end if;
+    		end if;
+    	end if;
+    end process;
 
 end architecture behaviour;
-
