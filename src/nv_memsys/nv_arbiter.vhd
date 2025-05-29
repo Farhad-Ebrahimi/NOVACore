@@ -41,161 +41,65 @@ end entity;
 
 architecture rtl of nv_arbiter is
 
-  type state_t is (IDLE, DMEM_BUSY, IMEM_BUSY);
-  signal state, prev_state : state_t := IDLE;
-
-  -- Registered outputs to memory
-  signal r_arb_address : std_logic_vector(31 downto 0);
-  signal r_arb_data_out : std_logic_vector(31 downto 0);
-  signal r_arb_sel_out : std_logic_vector(3 downto 0);
-  signal r_arb_read_req : std_logic;
-  signal r_arb_write_req : std_logic;
-
-  -- Registered acks back to core
-  signal r_dmem_read_ack : std_logic;
-  signal r_dmem_write_ack : std_logic;
-  signal r_imem_ack : std_logic;
-
-  -- Registered read data out to core
-  signal r_dmem_data_out : std_logic_vector(31 downto 0);
-  signal r_imem_data : std_logic_vector(31 downto 0);
-
 begin
+      process (
+    dmem_read_req, dmem_write_req, dmem_address, dmem_data_in, dmem_data_size,
+    imem_req, imem_address,
+    arb_data_in, arb_read_ack, arb_write_ack
+  )
+    variable shifted_dmem_data_in  : std_logic_vector(31 downto 0);
+    variable shifted_arb_data_out  : std_logic_vector(31 downto 0);
+    variable data_shift            : integer;
+  begin
 
-  arb_address <= r_arb_address;
-  arb_data_out <= r_arb_data_out;
-  arb_sel_out <= r_arb_sel_out;
-  arb_read_req <= r_arb_read_req;
-  arb_write_req <= r_arb_write_req;
+    -- Default assignments
+    arb_address    <= (others => '1');
+    arb_data_out   <= (others => '0');
+    arb_sel_out    <= (others => '0');
+    arb_read_req   <= '0';
+    arb_write_req  <= '0';
 
-  dmem_read_ack <= r_dmem_read_ack;
-  dmem_write_ack <= r_dmem_write_ack;
-  imem_ack <= r_imem_ack;
+    dmem_data_out  <= (others => '0');
+    dmem_read_ack  <= '0';
+    dmem_write_ack <= '0';
 
-  dmem_data_out <= r_dmem_data_out;
-  imem_data <= r_imem_data;
+    imem_data      <= (others => '0');
+    imem_ack       <= '0';
 
-  process(clk)
-begin
-  if rising_edge(clk) then
-    if reset = '1' then
-      state <= IDLE;
-      prev_state <= IDLE;
+    -- Prioritize DMEM if valid request and valid address
+    if (dmem_read_req = '1' or dmem_write_req = '1') and is_mem_addr(dmem_address) then
+      data_shift := get_data_shift(dmem_data_size, dmem_address);
+      shifted_dmem_data_in := std_logic_vector(shift_left(unsigned(dmem_data_in), data_shift));
 
-      r_dmem_read_ack  <= '0';
-      r_dmem_write_ack <= '0';
-      r_imem_ack       <= '0';
+      arb_address    <= dmem_address;
+      arb_sel_out    <= wb_get_data_sel(dmem_data_size, dmem_address);
+      arb_data_out   <= shifted_dmem_data_in;
+      arb_read_req   <= dmem_read_req;
+      arb_write_req  <= dmem_write_req;
 
-      r_arb_address    <= (others => '1');
-      r_arb_sel_out    <= (others => '0');
-      r_arb_read_req   <= '0';
-      r_arb_write_req  <= '0';
-      r_arb_data_out   <= (others => '0');
+      if dmem_write_req = '1' and arb_write_ack = '1' then
+        dmem_write_ack <= '1';
+      elsif dmem_read_req = '1' and arb_read_ack = '1' then
+        shifted_arb_data_out := std_logic_vector(shift_right(unsigned(arb_data_in), data_shift));
+        dmem_data_out  <= shifted_arb_data_out;
+        dmem_read_ack  <= '1';
+      end if;
 
-      r_dmem_data_out  <= (others => '0');
-      r_imem_data      <= (others => '0');
+    -- Else IMEM if valid and in memory
+    elsif imem_req = '1' and is_mem_addr(imem_address) then
+      data_shift := get_data_shift("00", imem_address);  -- Always word access
+      arb_address    <= imem_address;
+      arb_sel_out    <= wb_get_data_sel("00", imem_address);
+      arb_data_out   <= (others => '0');
+      arb_read_req   <= imem_req;
+      arb_write_req  <= '0';
 
-    else
-
-      case state is
-        when IDLE =>
-          -- default: deassert everything
-          r_dmem_read_ack  <= '0';
-          r_dmem_write_ack <= '0';
-          r_imem_ack       <= '0';
-
-          r_arb_address    <= (others => '1');
-          r_arb_sel_out    <= (others => '0');
-          r_arb_read_req   <= '0';
-          r_arb_write_req  <= '0';
-
-          r_dmem_data_out  <= (others => '0');
-          r_imem_data      <= (others => '0');
-
-          if (dmem_write_req = '1' or dmem_read_req = '1') then
-            if is_mem_addr(dmem_address) then
-              state <= DMEM_BUSY;
-            else
-              state <= IDLE;
-            end if;
-          elsif imem_req = '1' then
-            if is_mem_addr(imem_address) then
-              state <= IMEM_BUSY;
-            else
-              state <= IDLE;
-            end if;
-          end if;
-
-        when DMEM_BUSY =>
-          
-          r_arb_address   <= dmem_address;
-          r_arb_sel_out    <= wb_get_data_sel(dmem_data_size, dmem_address);
-          r_arb_read_req  <= dmem_read_req;
-          r_arb_write_req <= dmem_write_req;
-          r_arb_data_out  <= std_logic_vector(shift_left(unsigned(dmem_data_in), get_data_shift(dmem_data_size, dmem_address)));
-
-          r_dmem_read_ack  <= '0';
-          r_dmem_write_ack <= '0';
-
-          if prev_state = DMEM_BUSY then
-            if arb_read_ack = '1' and dmem_read_req = '1' then
-              r_dmem_data_out <= std_logic_vector(shift_right(unsigned(arb_data_in), get_data_shift(dmem_data_size, dmem_address)));
-              r_dmem_read_ack <= '1';
-            elsif arb_write_ack = '1' and dmem_write_req = '1' then
-              r_dmem_write_ack <= '1';
-            end if;
-
-            -- transition decision
-            if (dmem_write_req = '1' or dmem_read_req = '1') then
-              if is_mem_addr(dmem_address) then
-                state <= DMEM_BUSY;
-              else
-                state <= IDLE;
-              end if;
-            elsif imem_req = '1' then
-              if is_mem_addr(imem_address) then
-                state <= IMEM_BUSY;
-              else
-                state <= IDLE;
-              end if;
-            end if;
-          end if;
-
-        when IMEM_BUSY =>
-          -- drive arbiter signals
-          r_arb_address   <= imem_address;
-          r_arb_sel_out    <= wb_get_data_sel("00", imem_address); -- full-word fetch
-          r_arb_read_req  <= imem_req;
-          r_arb_write_req <= '0';
-
-          r_imem_ack      <= '0';
-
-          if prev_state = IMEM_BUSY then
-            if arb_read_ack = '1' and imem_req = '1' then
-              r_imem_data <= arb_data_in;
-              r_imem_ack  <= '1';
-            end if;
-
-            -- transition decision
-            if (dmem_write_req = '1' or dmem_read_req = '1') then
-              if is_mem_addr(dmem_address) then
-                state <= DMEM_BUSY;
-              else
-                state <= IDLE;
-              end if;
-            elsif is_mem_addr(imem_address) then
-              state <= IMEM_BUSY;
-            else
-              state <= IDLE;
-            end if;
-          end if;
-
-        when others =>
-          state <= IDLE;
-      end case;
+      if arb_read_ack = '1' then
+        imem_data <= std_logic_vector(shift_right(unsigned(arb_data_in), data_shift));
+        imem_ack  <= '1';
+      end if;
     end if;
-  end if;
-end process;
 
-
+  end process;
+  
 end architecture rtl;

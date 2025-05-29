@@ -103,7 +103,6 @@ entity pp_execute is
     jump_out : out STD_LOGIC;
     jump_inst : out STD_LOGIC;
     pcie_bpu : out STD_LOGIC_VECTOR(31 downto 0);
-    branch_result : out std_logic;
     jump_target_out : out STD_LOGIC_VECTOR(31 downto 0);
 
     -- Inputs to the forwarding logic from the MEM stage:
@@ -371,7 +370,6 @@ begin
       -- Control outputs:
       jump_out => jump_out,
       jump_inst => jump_inst,
-      branch_result=> branch_result,
       jump_target_out => jump_target_out
     );
 
@@ -596,7 +594,7 @@ begin
     rs1_data
     )
   begin
-    if (stall_exe_stg1 ='0') then
+     if (stall_exe_stg1 ='0') then
         if rd_write_to_stg3 = '1' and rd_addr_to_stg3 = rs1_addr and rd_addr_to_stg3 /= b"00000" and (not is_csd_op(alu_op_to_stg3)) then
           rs1_forwarded <= bw_alu_result_to_stg3;
         elsif rd_write_to_forwarding_stg3 = '1' and rd_addr_to_forwarding_stg3 = rs1_addr and rd_addr_to_forwarding_stg3 /= b"00000" and (not is_csd_op(alu_op_to_forwarding_stg3)) then
@@ -646,10 +644,10 @@ begin
   begin
 
     load_hazard_detected <= '0';
-
-    if (mem_mem_op = MEMOP_TYPE_LOAD or mem_mem_op = MEMOP_TYPE_LOAD_UNSIGNED) and
-      ((alu_x_src = ALU_SRC_REG and mem_rd_addr = rs1_addr and rs1_addr /= b"00000") or 
-      (alu_y_src = ALU_SRC_REG and mem_rd_addr = rs2_addr and rs2_addr /= b"00000")) then
+    
+    if (mem_op_to_stg3 = MEMOP_TYPE_LOAD or mem_op_to_stg3 = MEMOP_TYPE_LOAD_UNSIGNED) and
+      ((alu_x_src = ALU_SRC_REG and rd_addr_to_stg3 = rs1_addr and rs1_addr /= b"00000") or 
+      (alu_y_src = ALU_SRC_REG and rd_addr_to_stg3 = rs2_addr and rs2_addr /= b"00000")) then
 
       load_hazard_detected <= '1';
 
@@ -658,10 +656,10 @@ begin
       (alu_y_src = ALU_SRC_REG and rd_addr_to_forwarding_stg3 = rs2_addr and rs2_addr /= b"00000")) then
 
       load_hazard_detected <= '1';
-
-    elsif (mem_op_to_stg3 = MEMOP_TYPE_LOAD or mem_op_to_stg3 = MEMOP_TYPE_LOAD_UNSIGNED) and
-      ((alu_x_src = ALU_SRC_REG and rd_addr_to_stg3 = rs1_addr and rs1_addr /= b"00000") or 
-      (alu_y_src = ALU_SRC_REG and rd_addr_to_stg3 = rs2_addr and rs2_addr /= b"00000")) then
+      
+    elsif (mem_mem_op = MEMOP_TYPE_LOAD or mem_mem_op = MEMOP_TYPE_LOAD_UNSIGNED) and
+      ((alu_x_src = ALU_SRC_REG and mem_rd_addr = rs1_addr and rs1_addr /= b"00000") or 
+      (alu_y_src = ALU_SRC_REG and mem_rd_addr = rs2_addr and rs2_addr /= b"00000")) then
 
       load_hazard_detected <= '1';
 

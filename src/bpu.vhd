@@ -56,7 +56,7 @@ architecture Behavioral of bpu is
 
 begin
 
-    wrong_prdt <= '1' when stall= '0' and ((branch_history /= actual_taken) or
+    wrong_prdt <= '1' when ((branch_history /= actual_taken) or
         (branch_history = '1' and branch_history = actual_taken and prdt_addr /= actual_target))
         else '0';
 

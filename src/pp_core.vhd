@@ -63,8 +63,8 @@ architecture behaviour of pp_core is
 	signal stall_if, stall_id, stall_ex, stall_mem : STD_LOGIC;
 	
 	-- delibrate stall
-	signal stall_counter : integer range 0 to 2 := 0;
-	signal delibrate_stall : std_logic;
+	signal stall_counter : integer range 0 to 1 := 0;
+	signal delibrate_stall, insert_nop_id : std_logic;
 
 	-- Signals used to determine if an instruction should be counted
 	-- by the instret counter:
@@ -174,7 +174,7 @@ architecture behaviour of pp_core is
 
 begin
 
-	stall_if <= delibrate_stall or stall_id;
+	stall_if <=  stall_id or delibrate_stall or insert_nop_id;
 	stall_id <= stall_ex;
 	stall_ex <= hazard_detected or stall_mem;
 	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and dmem_read_ack = '0')
@@ -290,6 +290,7 @@ begin
 			instruction_address => if_pc,
 			instruction_ready => if_instruction_ready,
 			instruction_count => if_count_instruction,
+			insert_nop_id => insert_nop_id,
 			funct3 => id_funct3,
 			rs1_addr => id_rs1_address,
 			rs2_addr => id_rs2_address,
@@ -371,7 +372,6 @@ begin
 			exception_context_out => ex_exception_context,
 			jump_out => branch_taken,
 			jump_inst => jump_inst_ie,
-			branch_result => branch_result,
 			pcie_bpu => pcie_bpu,
 			jump_target_out => branch_target,
 			mem_rd_write => mem_rd_write,
@@ -472,7 +472,7 @@ begin
 		);
 		
 		
- --  delibrate stall because of Stor instruction 
+   --  delibrate stall because of Stor instruction 
     stall_proc : process(clk)
     begin
         if rising_edge(clk) then
@@ -484,9 +484,6 @@ begin
                     delibrate_stall <= '1';
                     stall_counter <= 1;
                 elsif stall_counter = 1 then
-                    delibrate_stall <= '1';
-                    stall_counter <= 2;
-                elsif stall_counter = 2 then
                     delibrate_stall <= '0';
                     stall_counter <= 0;
                 else

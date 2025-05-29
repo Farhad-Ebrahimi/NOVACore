@@ -100,7 +100,6 @@ entity fp_exe_stg1 is
     -- Control outputs:
     jump_out : out std_logic;
     jump_inst : out std_logic;
-    branch_result : out std_logic;
     jump_target_out : out std_logic_vector(31 downto 0);
 
     rs1_forwarded : in std_logic_vector(31 downto 0);
@@ -189,10 +188,6 @@ begin
     or (to_std_logic(branch = BRANCH_CONDITIONAL) and branch_condition)
     or to_std_logic(branch = BRANCH_SRET)) and not stall;
   
-  branch_result <= (to_std_logic(branch = BRANCH_JUMP or branch = BRANCH_JUMP_INDIRECT)
-    or (to_std_logic(branch = BRANCH_CONDITIONAL) and branch_condition)
-    or to_std_logic(branch = BRANCH_SRET));
-    
   jump_inst <= '1' when (branch /= BRANCH_NONE) else '0';
   
   jump_out <= do_jump;

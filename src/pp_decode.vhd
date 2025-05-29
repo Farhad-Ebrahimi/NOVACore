@@ -29,6 +29,7 @@ entity pp_decode is
 		instruction_address : in std_logic_vector(31 downto 0);
 		instruction_ready   : in std_logic;
 		instruction_count   : in std_logic;
+		insert_nop_id       : out std_logic;
 
 		-- Register addresses:
 		rs1_addr, rs2_addr, rd_addr : out register_address;
@@ -69,12 +70,15 @@ architecture behaviour of pp_decode is
 	signal instruction     : std_logic_vector(31 downto 0);
 	signal immediate_value : std_logic_vector(31 downto 0);
 	signal rd_addr_reg : register_address;
+	signal insert_nop, nop_trigger, rd_write_reg : std_logic;
 	signal alu_op_reg : alu_operation;
 	
 begin
 
 	immediate <= immediate_value;
-
+	alu_op <= alu_op_reg;
+	rd_write <= rd_write_reg;
+	
 	-- Instruction fetch and hold
 	get_instruction: process(clk)
 	begin
@@ -85,7 +89,7 @@ begin
 				count_instruction <= '0';
 			elsif stall = '1' then
 				count_instruction <= '0'; -- hold PC and instruction
-			elsif flush = '1' or instruction_ready = '0' then
+			elsif flush = '1' or instruction_ready = '0' or insert_nop = '1' then
 				instruction <= RISCV_NOP;
 				count_instruction <= '0';
 			else
@@ -100,6 +104,7 @@ begin
 	rs1_addr <= instruction(19 downto 15);
 	rs2_addr <= instruction(24 downto 20);
 	rd_addr  <= instruction(11 downto  7);
+	rd_addr_reg <= instruction(11 downto  7);
 	-- Extract the shamt value from the instruction word:
 	shamt    <= instruction(24 downto 20);
 
@@ -130,11 +135,11 @@ begin
 			funct3 => instruction(14 downto 12),
 			funct7 => instruction(31 downto 25),
 			funct12 => instruction(31 downto 20),
-			rd_write => rd_write,
+			rd_write => rd_write_reg,
 			branch => branch,
 			alu_x_src => alu_x_src,
 			alu_y_src => alu_y_src,
-			alu_op => alu_op,
+			alu_op => alu_op_reg,
 			mem_op => mem_op,
 			mem_size => mem_size,
 			decode_exception => decode_exception,
@@ -142,5 +147,26 @@ begin
 			csr_write => csr_write,
 			csr_imm => csr_use_imm
 		);
+		
+    --  delibrate stall because of Stor instruction 
+    insert_nop_proc : process(clk)
+    begin
+        if rising_edge(clk) then
+            if reset = '1' then
+                insert_nop  <= '0';
+                nop_trigger <= '0';
+            elsif stall = '0' then
+                if is_csd_op(alu_op_reg) and rd_write_reg = '1' and rd_addr_reg/=b"00000" and nop_trigger = '0' then
+                    insert_nop  <= '1';
+                    nop_trigger <= '1';
+                else
+                    insert_nop  <= '0';
+                    nop_trigger <= '0';
+                end if;
+            end if;
+        end if;
+    end process;
+    
+    insert_nop_id <= insert_nop;
 
 end architecture behaviour;
