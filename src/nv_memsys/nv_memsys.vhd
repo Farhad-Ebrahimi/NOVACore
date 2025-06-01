@@ -221,25 +221,25 @@ begin
                 mem_write_ack <= '0';
                 read_ack_pending <= '0';
                 write_ack_pending <= '0';
-            else      
+            else
                 mem_read_ack <= '0';
                 mem_write_ack <= '0';
                 case selected_memory is
                     when MAIN_MEM | SSBL_SRAM | AEE_SRAM | FSBL_ROM =>
-                         if mem_write_req = '1' and write_ack_pending = '0' then
+                        if mem_write_req = '1' and write_ack_pending = '0' then
                             mem_write_ack <= '1';
                             write_ack_pending <= '1';
-                         elsif mem_read_req = '1' and read_ack_pending = '0' then
+                        elsif mem_read_req = '1' and read_ack_pending = '0' then
                             mem_read_ack <= '1';
                             read_ack_pending <= '1';
                          else
-                             read_ack_pending <= '0';
-                             write_ack_pending <= '0';
-                         end if;
-                     when others =>
-                            write_ack_pending <= '0';
                             read_ack_pending <= '0';
-                end case;        
+                            write_ack_pending <= '0';
+                        end if;
+                    when others =>
+                        write_ack_pending <= '0';
+                        read_ack_pending <= '0';
+                end case;
             end if;
         end if;
     end process;

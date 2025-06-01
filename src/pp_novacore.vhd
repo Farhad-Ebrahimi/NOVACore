@@ -64,7 +64,7 @@ architecture behaviour of pp_novacore is
 	-- Instruction memory signals (nv_memsys)
 	signal imem_data_memsys : std_logic_vector(31 downto 0);
 	signal imem_ack_memsys : std_logic;
-
+	
 	-- Data memory signals (nv_memsys)
 	signal dmem_data_in_memsys : std_logic_vector(31 downto 0);
 	signal dmem_read_ack_memsys : std_logic;
@@ -89,7 +89,13 @@ architecture behaviour of pp_novacore is
 	-- Arbiter signals:
 	signal m1_inputs, m2_inputs : wishbone_master_inputs;
 	signal m1_outputs, m2_outputs : wishbone_master_outputs;
-
+	
+	-- Internal registers to hold previous cycle inputs
+    signal dmem_read_req_r     : std_logic := '0';
+    signal dmem_write_req_r    : std_logic := '0';
+    signal dmem_address_r      : std_logic_vector(dmem_address'range);
+    signal imem_address_r      : std_logic_vector(imem_address'range);
+	
 begin
 
 	processor : entity work.pp_core
@@ -136,7 +142,11 @@ begin
 			dmem_write_req => dmem_write_req,
 			dmem_write_ack => dmem_write_ack_memsys
 		);
-
+		
+    --------------------------------------------------------
+	-- Wishbone Interface: Prepherial --> UART, TIMER, GPIO
+	--------------------------------------------------------
+	
 	-- IMEM Wb adapter
 	imem_if : entity work.pp_wb_adapter
 		port map(
@@ -195,44 +205,57 @@ begin
 			wb_ack_in => wb_ack_in
 		);
 
-	process (clk)
+    process (clk)
     begin
-    	if rising_edge(clk) then
-    		if reset = '1' then
-    			imem_data <= (others => '0');
-    			imem_ack <= '0';
-    			dmem_data_in <= (others => '0');
-    			dmem_read_ack <= '0';
-    			dmem_write_ack <= '0';
-    		else
-    			if (dmem_read_req = '1' or dmem_write_req = '1') then
-    				if is_mem_addr(dmem_address) then
-    					dmem_data_in <= dmem_data_in_memsys;
-    					dmem_read_ack <= dmem_read_ack_memsys;
-    					dmem_write_ack <= dmem_write_ack_memsys;
-    				else
-    					dmem_data_in <= dmem_data_in_wb;
-    					dmem_read_ack <= dmem_read_ack_wb;
-    					dmem_write_ack <= dmem_write_ack_wb;
-    				end if;
-    				-- imem_data <= (others => '0'); keep previous value
-    				imem_ack <= '0';
+        if rising_edge(clk) then
+            if reset = '1' then
+                
+                dmem_data_in     <= (others => '0');
+                dmem_read_ack    <= '0';
+                dmem_write_ack   <= '0';
+                imem_data        <= (others => '0');
+                imem_ack         <= '0';
     
-    			else
-    				-- dmem_data_in <= (others => '0'); keep previous value
-    				dmem_read_ack <= '0';
-    				dmem_write_ack <= '0';
+                dmem_read_req_r  <= '0';
+                dmem_write_req_r <= '0';
+                dmem_address_r   <= (others => '0');
+                imem_address_r   <= (others => '0');
     
-    				if is_mem_addr(imem_address) then
-    					imem_data <= imem_data_memsys;
-    					imem_ack <= imem_ack_memsys;
-    				else
-    					imem_data <= imem_data_wb;
-    					imem_ack <= imem_ack_wb;
-    				end if;
-    			end if;
-    		end if;
-    	end if;
+            else
+         
+                dmem_read_req_r  <= dmem_read_req;
+                dmem_write_req_r <= dmem_write_req;
+                dmem_address_r   <= dmem_address;
+                imem_address_r   <= imem_address;
+    
+                dmem_read_ack    <= '0';
+                dmem_write_ack   <= '0';
+                imem_ack         <= '0';
+    
+                if dmem_read_req_r = '1' or dmem_write_req_r = '1' then
+                    if is_mem_addr(dmem_address_r) then
+                        dmem_data_in   <= dmem_data_in_memsys;
+                        dmem_read_ack  <= dmem_read_ack_memsys;
+                        dmem_write_ack <= dmem_write_ack_memsys;
+                    else
+                        dmem_data_in   <= dmem_data_in_wb;
+                        dmem_read_ack  <= dmem_read_ack_wb;
+                        dmem_write_ack <= dmem_write_ack_wb;
+                    end if;
+                    -- Keep imem_data, reset ack
+    
+                else
+                    -- No DMEM access, handle IMEM
+                    if is_mem_addr(imem_address_r) then
+                        imem_data <= imem_data_memsys;
+                        imem_ack  <= imem_ack_memsys;
+                    else
+                        imem_data <= imem_data_wb;
+                        imem_ack  <= imem_ack_wb;
+                    end if;
+                end if;
+            end if;
+        end if;
     end process;
-
+        
 end architecture behaviour;
