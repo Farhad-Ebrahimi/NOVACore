@@ -1,3 +1,8 @@
+-- The NOVACore - A 7-stage in-order RISC-V processor for FPGAs
+-- (c) Farhad EbrahimiAzandaryani 2023-2024 <farhad.ebrahimiazandaryani@fau.de>
+-- Demonstration : <https://www.cs3.tf.fau.de/nova-core-2/>
+-- Report bugs and issues on <https://github.com/Farhad-Ebrahimi/NOVACore/issues>
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -26,6 +31,7 @@ architecture rtl of ssbl_ram_wrapper is
     signal csb_intermediate : std_logic;
 
     signal sram_addr : std_logic_vector(ADDR_WIDTH - 1 downto 0);
+    signal data_mask : std_logic_vector(DATA_WIDTH-1 downto 0);
     signal dout_sram : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
     signal dout_reg : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
     signal dout_sram_bank0 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
@@ -48,30 +54,16 @@ architecture rtl of ssbl_ram_wrapper is
 
 begin
 
-    sram_addr <= addr(10 downto 2);
+    sram_addr <= std_logic_vector(unsigned(addr(10 downto 2)) - to_unsigned(256, 9));
 
     web_intermediate <= not web;
     csb_intermediate <= not csb;
+    
+    gen_byte_mask : for i in 0 to 3 generate
+        data_mask(8 * (i + 1) - 1 downto 8 * i) <= (others => wmask(i));
+    end generate;
 
-    process (dout_sram_bank0, csb, web, rst)
-        variable temp : std_logic := '1';
-    begin
-        if rst = '1' then
-            dout_reg <= (others => '0');
-        elsif csb = '1' and web = '0' then
-            temp := '1';
-            for i in dout_sram_bank0'range loop
-                if dout_sram_bank0(i) /= '0' and dout_sram_bank0(i) /= '1' then
-                    temp := '0';
-                end if;
-            end loop;
-            if temp = '1' then
-                dout_reg <= dout_sram_bank0;
-            end if;
-        end if;
-    end process;
-
-    dout <= dout_reg;
+    dout <= dout_sram_bank0 and data_mask;
 
     Bank_0 : sky130_sram_2kbyte_1rw1r_32x512_8
     port map(

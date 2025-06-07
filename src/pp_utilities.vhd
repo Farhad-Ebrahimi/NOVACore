@@ -4,6 +4,7 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 use work.pp_types.all;
 use work.pp_constants.all;
@@ -30,8 +31,8 @@ package pp_utilities is
     -- Function to check if address is within memory range
     function is_mem_addr(addr : std_logic_vector(31 downto 0)) return boolean;
     
-    -- Memory function
-    function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return memory_region_t ;
+    -- Memory selection function based on address ranges
+    function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return natural;
 
     function get_data_shift(size : in std_logic_vector(1 downto 0); address : in std_logic_vector)
     return natural;
@@ -95,24 +96,24 @@ end function;
         end case;
     end function;
     
-    function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return memory_region_t is
-        variable mem : memory_region_t;
+    function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return natural is
+        variable mem : natural;
     begin
         if mem_address(31 downto 16) = x"0000" or mem_address(31 downto 16) = x"0001" then
-            mem := MAIN_MEM;
+            mem := 8;
         elsif mem_address(31 downto 16) = x"FFFF" then
             case mem_address(15 downto 10) is
                 when b"100000" =>
-                    mem := FSBL_ROM;
+                    mem := 1;
                 when b"100001" | b"100010" =>
-                    mem := SSBL_SRAM;
+                    mem := 2;
                 when b"100011" | b"100100" =>
-                    mem := AEE_SRAM;
+                    mem := 4;
                 when others =>
-                    mem := NON_MEM;
+                    mem := 0;
             end case;
         else
-            mem := NON_MEM;
+            mem := 0;
         end if;
     return mem;
     end function;
