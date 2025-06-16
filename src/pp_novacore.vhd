@@ -49,7 +49,7 @@ architecture behaviour of pp_novacore is
 	-- Instruction memory signals:
 	signal imem_address : std_logic_vector(31 downto 0);
 	signal imem_data : std_logic_vector(31 downto 0);
-	signal imem_req, imem_ack: std_logic;
+	signal imem_req, imem_ack : std_logic;
 
 	-- Data memory signals:
 	signal dmem_address : std_logic_vector(31 downto 0);
@@ -64,7 +64,7 @@ architecture behaviour of pp_novacore is
 	-- Instruction memory signals (nv_memsys)
 	signal imem_data_memsys : std_logic_vector(31 downto 0);
 	signal imem_ack_memsys : std_logic;
-	
+
 	-- Data memory signals (nv_memsys)
 	signal dmem_data_in_memsys : std_logic_vector(31 downto 0);
 	signal dmem_read_ack_memsys : std_logic;
@@ -89,13 +89,17 @@ architecture behaviour of pp_novacore is
 	-- Arbiter signals:
 	signal m1_inputs, m2_inputs : wishbone_master_inputs;
 	signal m1_outputs, m2_outputs : wishbone_master_outputs;
-	
+
 	-- Internal registers to hold previous cycle inputs
-    signal dmem_read_req_r     : std_logic := '0';
-    signal dmem_write_req_r    : std_logic := '0';
-    signal dmem_address_r      : std_logic_vector(dmem_address'range);
-    signal imem_address_r      : std_logic_vector(imem_address'range);
-	signal imem_req_r    : std_logic := '0';
+	signal dmem_read_req_r : std_logic := '0';
+	signal dmem_write_req_r : std_logic := '0';
+	signal dmem_address_r : std_logic_vector(dmem_address'range);
+	signal imem_address_r : std_logic_vector(imem_address'range);
+	signal imem_req_r : std_logic := '0';
+
+	type state_type is (IDLE, ST_NVDMEM, ST_NVIMEM, ST_WBDMEM);
+	signal state : state_type := IDLE;
+
 begin
 
 	processor : entity work.pp_core
@@ -142,18 +146,18 @@ begin
 			dmem_write_req => dmem_write_req,
 			dmem_write_ack => dmem_write_ack_memsys
 		);
-		
-    --------------------------------------------------------
+
+	--------------------------------------------------------
 	-- Wishbone Interface: Prepherial --> UART, TIMER, GPIO
 	--------------------------------------------------------
-    
-    --	There will be no imem_requests to peripherials via wb;
-	m2_outputs.adr <= (others=>'0');
-	m2_outputs.sel <= (others=>'0'); 
-	m2_outputs.cyc<='0';
-	m2_outputs.stb <='0';
-	m2_outputs.we<='0';
-	
+
+	--	There will be no imem_requests to peripherials via wb;
+	m2_outputs.adr <= (others => '0');
+	m2_outputs.sel <= (others => '0');
+	m2_outputs.cyc <= '0';
+	m2_outputs.stb <= '0';
+	m2_outputs.we <= '0';
+
 	-- DMEM Wb adapter
 	dmem_if : entity work.pp_wb_adapter
 		port map(
@@ -170,10 +174,10 @@ begin
 			wb_inputs => dmem_if_inputs,
 			wb_outputs => dmem_if_outputs
 		);
-        
-    dmem_if_inputs <= m1_inputs;
+
+	dmem_if_inputs <= m1_inputs;
 	m1_outputs <= dmem_if_outputs;
-   
+
 	arbiter : entity work.pp_wb_arbiter
 		port map(
 			clk => clk,
@@ -191,67 +195,86 @@ begin
 			wb_dat_in => wb_dat_in,
 			wb_ack_in => wb_ack_in
 		);
+	address_decoder_mux : process (
+		state,
+		dmem_read_ack_memsys, dmem_read_ack_wb,
+		dmem_write_ack_memsys, dmem_write_ack_wb,
+		dmem_data_in_memsys, dmem_data_in_wb,
+		imem_ack_memsys, imem_data_memsys)
+	begin
 
-    process (clk)
-begin
-    if rising_edge(clk) then
-        if reset = '1' then
-            dmem_data_in     <= (others => '0');
-            dmem_read_ack    <= '0';
-            dmem_write_ack   <= '0';
-            imem_data        <= (others => '0');
-            imem_ack         <= '0';
+		dmem_read_ack <= '0';
+		dmem_write_ack <= '0';
+		-- dmem_data_in <= (others => '0');
+		imem_ack <= '0';
+		--imem_data <= (others => '0');
 
-            dmem_read_req_r  <= '0';
-            dmem_write_req_r <= '0';
-            dmem_address_r   <= (others => '0');
-            imem_address_r   <= (others => '0');
-            imem_req_r       <= '0';
+		case state is
+			when ST_NVDMEM | ST_NVIMEM =>
+				dmem_read_ack <= dmem_read_ack_memsys;
+				dmem_write_ack <= dmem_write_ack_memsys;
+				dmem_data_in <= dmem_data_in_memsys;
+				imem_ack <= imem_ack_memsys;
+				imem_data <= imem_data_memsys;
 
-        else
-            -- Register requests and addresses
-            dmem_read_req_r  <= dmem_read_req;
-            dmem_write_req_r <= dmem_write_req;
-            dmem_address_r   <= dmem_address;
-            imem_address_r   <= imem_address;
-            imem_req_r       <= imem_req;
+			when ST_WBDMEM =>
+				dmem_read_ack <= dmem_read_ack_wb;
+				dmem_write_ack <= dmem_write_ack_wb;
+				dmem_data_in <= dmem_data_in_wb;
 
-            -- Clear acknowledge signals
-            dmem_read_ack    <= '0';
-            dmem_write_ack   <= '0';
-            imem_ack         <= '0';
+			when others =>
+				null;
+		end case;
+	end process;
 
-            -- DMEM access handling
-            if dmem_read_req_r = '1' or dmem_write_req_r = '1' then
-                if is_mem_addr(dmem_address_r) then
-                    -- Memory system selected
-                    if dmem_write_req_r = '1' and dmem_write_ack_memsys = '1' then
-                        dmem_write_ack <= dmem_write_ack_memsys;
-                    elsif dmem_read_req_r = '1' and dmem_read_ack_memsys = '1' then
-                        dmem_data_in  <= dmem_data_in_memsys;
-                        dmem_read_ack <= dmem_read_ack_memsys;
-                    end if;
-                else
-                    -- Wishbone selected
-                    if dmem_write_req_r = '1' and dmem_write_ack_wb = '1' then
-                        dmem_write_ack <= dmem_write_ack_wb;
-                    elsif dmem_read_req_r = '1' and dmem_read_ack_wb = '1' then
-                        dmem_data_in  <= dmem_data_in_wb;
-                        dmem_read_ack <= dmem_read_ack_wb;
-                    end if;
-                end if;
+	address_decoder : process (clk)
+	begin
+		if rising_edge(clk) then
+			if reset = '1' then
+				state <= IDLE;
+			else
+				case state is
+					when IDLE =>
+						if dmem_read_req = '1' or dmem_write_req = '1' then
+							if is_mem_addr(dmem_address) then
+								-- Handle DMEM fetch (FSBL_ROM, SSBL_RAM, AEE_RAM, Main_Memory)
+								state <= ST_NVDMEM;
+							else
+								-- Peripheral DMEM access (UART/TIMER via Wishbone)
+								state <= ST_WBDMEM;
+							end if;
 
-            else
-                -- No DMEM access, handle IMEM access
-                if is_mem_addr(imem_address_r) then
-                    if imem_req_r = '1' and imem_ack_memsys = '1' then
-                        imem_data <= imem_data_memsys;
-                        imem_ack  <= imem_ack_memsys;
-                    end if;
-                end if;
-            end if;
-        end if;
-    end if;
-end process;
-        
+						elsif imem_req = '1' and is_mem_addr(imem_address) then
+							-- Handle IMEM fetch (FSBL_ROM, SSBL_RAM, AEE_RAM, Main_Memory)
+							state <= ST_NVIMEM;
+						end if;
+
+					when ST_NVDMEM =>
+						if dmem_read_ack_memsys = '1' or dmem_write_ack_memsys = '1' then
+							state <= ST_NVIMEM;
+						end if;
+
+					when ST_WBDMEM =>
+						if dmem_read_ack_wb = '1' or dmem_write_ack_wb = '1' then
+							state <= ST_NVIMEM;
+						end if;
+
+					when ST_NVIMEM =>
+						if dmem_read_req = '1' or dmem_write_req = '1' then
+							-- IMEM fetch is interrupted by DMEM access
+							if is_mem_addr(dmem_address) then
+								state <= ST_NVDMEM;
+							else
+								state <= ST_WBDMEM;
+							end if;
+						end if;
+
+					when others =>
+						state <= IDLE;
+
+				end case;
+			end if;
+		end if;
+	end process address_decoder;
+	
 end architecture behaviour;

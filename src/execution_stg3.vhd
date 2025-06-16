@@ -68,11 +68,11 @@ entity fp_exe_stg3 is
     count_instruction_in : in std_logic;
 
     -- Exception control registers:
-    mtvec_in : in std_logic_vector(31 downto 0);
+    --mtvec_in : in std_logic_vector(31 downto 0);
 
     -- Exception outputs:
-    exception_in         : in std_logic;
-    exception_context_in : in csr_exception_context;
+--    exception_in         : in std_logic;
+--    exception_context_in : in csr_exception_context;
 
     -- Data memory outputs:
     dmem_address_out   : out std_logic_vector(31 downto 0);
@@ -105,14 +105,14 @@ entity fp_exe_stg3 is
     mem_size_out : out memory_operation_size;
 
     -- Whether the instruction should be counted:
-    count_instruction_out : out std_logic;
+    count_instruction_out : out std_logic
 
     -- Exception control registers:
-    mtvec_out : out std_logic_vector(31 downto 0);
+    -- mtvec_out : out std_logic_vector(31 downto 0);
 
     -- Exception outputs:
-    exception_out         : out std_logic;
-    exception_context_out : out csr_exception_context
+--    exception_out         : out std_logic;
+--    exception_context_out : out csr_exception_context
   );
 end entity fp_exe_stg3;
 
@@ -170,10 +170,10 @@ begin
   csr_addr_out  <= csr_addr;
 
   pc_out <= pc;
-  exception_out         <= exception;
-  exception_context_out <= exception_context;
+--  exception_out         <= exception;
+--  exception_context_out <= exception_context;
 
-  mtvec_out <= std_logic_vector(unsigned(mtvec));
+  --mtvec_out <= std_logic_vector(unsigned(mtvec));
 
   dmem_address_out   <=  alu_result when (mem_op /= MEMOP_TYPE_NONE and mem_op /= MEMOP_TYPE_INVALID) and exception = '0'else dmem_address;
   dmem_data_out      <= dmem_data;
@@ -224,11 +224,11 @@ begin
         csr_value     <= csr_value_in;
         
         -- Exception vector base:
-        mtvec <= mtvec_in;
+        --mtvec <= mtvec_in;
 
         -- exceptio signals
-        exception         <= exception_in;
-        exception_context <= exception_context_in;
+--        exception         <= exception_in;
+--        exception_context <= exception_context_in;
         
               
         -- memory stage signals

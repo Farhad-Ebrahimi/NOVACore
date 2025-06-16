@@ -257,7 +257,7 @@ begin
         -- Exception vector base:
         mtvec <= mtvec_in;
         mie <= mie_in;
-
+        
         -- Instruction decoder exceptions:
         decode_exception <= decode_exception_in;
         decode_exception_cause <= decode_exception_cause_in;

@@ -27,7 +27,7 @@ end entity main_memory_wrapper;
 
 architecture rtl of main_memory_wrapper is
 
-    signal sram_select : std_logic_vector(1 downto 0);
+    signal bank_select : std_logic_vector(1 downto 0);
 
     signal web_intermediate : std_logic;
     signal csb0_intermediate : std_logic;
@@ -36,7 +36,8 @@ architecture rtl of main_memory_wrapper is
     signal csb3_intermediate : std_logic;
 
     signal sram_addr : std_logic_vector(ADDR_WIDTH - 1 downto 0);
-    signal dout_reg : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
+    signal data_mask : std_logic_vector(DATA_WIDTH-1 downto 0);
+    signal dout_reg  : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
     signal dout_sram0 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
     signal dout_sram1 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
     signal dout_sram2 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
@@ -66,72 +67,26 @@ architecture rtl of main_memory_wrapper is
 
 begin
 
-    sram_select <= addr(12 downto 11);
+    bank_select <= addr(12 downto 11);
     sram_addr <= addr(10 downto 2);
 
     web_intermediate <= not web;
 
-    csb0_intermediate <= '0' when (csb = '1' and (sram_select = "00")) else '1';
-    csb1_intermediate <= '0' when (csb = '1' and (sram_select = "01")) else '1';
-    csb2_intermediate <= '0' when (csb = '1' and (sram_select = "10")) else '1';
-    csb3_intermediate <= '0' when (csb = '1' and (sram_select = "11")) else '1';
+    csb0_intermediate <= '0' when (csb = '1' and (bank_select = "00")) else '1';
+    csb1_intermediate <= '0' when (csb = '1' and (bank_select = "01")) else '1';
+    csb2_intermediate <= '0' when (csb = '1' and (bank_select = "10")) else '1';
+    csb3_intermediate <= '0' when (csb = '1' and (bank_select = "11")) else '1';
+    
+    gen_byte_mask : for i in 0 to 3 generate
+        data_mask(8 * (i + 1) - 1 downto 8 * i) <= (others => wmask(i));
+    end generate;
 
-    process (dout_sram_bank0, dout_sram_bank1, dout_sram_bank2, dout_sram_bank3, web, sram_select, rst)
-        variable temp : std_logic;
-    begin
-        if rst = '1' then
-            dout_reg <= (others => '0');
-        elsif web = '0' then
-            temp := '1';
-            case sram_select is
-                when "00" =>
-                    for i in dout_sram_bank0'range loop
-                        if dout_sram_bank0(i) /= '0' and dout_sram_bank0(i) /= '1' then
-                            temp := '0';
-                        end if;
-                    end loop;
-                    if temp = '1' then
-                        dout_reg <= dout_sram_bank0;
-                    end if;
-
-                when "01" =>
-                    for i in dout_sram_bank1'range loop
-                        if dout_sram_bank1(i) /= '0' and dout_sram_bank1(i) /= '1' then
-                            temp := '0';
-                        end if;
-                    end loop;
-                    if temp = '1' then
-                        dout_reg <= dout_sram_bank1;
-                    end if;
-
-                when "10" =>
-                    for i in dout_sram_bank2'range loop
-                        if dout_sram_bank2(i) /= '0' and dout_sram_bank2(i) /= '1' then
-                            temp := '0';
-                        end if;
-                    end loop;
-                    if temp = '1' then
-                        dout_reg <= dout_sram_bank2;
-                    end if;
-
-                when "11" =>
-                    for i in dout_sram_bank3'range loop
-                        if dout_sram_bank3(i) /= '0' and dout_sram_bank3(i) /= '1' then
-                            temp := '0';
-                        end if;
-                    end loop;
-                    if temp = '1' then
-                        dout_reg <= dout_sram_bank3;
-                    end if;
-
-                when others =>
-                    dout_reg <= (others => '0');
-            end case;
-        end if;
-    end process;
-
-    dout <= dout_reg;
-
+    dout <= (dout_sram_bank0 and data_mask) when csb0_intermediate = '0' else
+            (dout_sram_bank1 and data_mask) when csb1_intermediate = '0' else
+            (dout_sram_bank2 and data_mask) when csb2_intermediate = '0' else
+            (dout_sram_bank3 and data_mask) when csb3_intermediate = '0' else
+            (others=> '0');
+        
     Bank_0 : sky130_sram_2kbyte_1rw1r_32x512_8
     port map(
         clk0 => clk,

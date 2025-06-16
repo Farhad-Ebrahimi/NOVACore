@@ -67,7 +67,8 @@ begin
     imem_ack       <= '0';
 
     -- Prioritize DMEM if valid request and valid address
-    if (dmem_read_req = '1' or dmem_write_req = '1') and is_mem_addr(dmem_address) then
+    -- if (dmem_read_req = '1' or dmem_write_req = '1') and is_mem_addr(dmem_address) then
+    if (dmem_read_req = '1' or dmem_write_req = '1') then
       data_shift := get_data_shift(dmem_data_size, dmem_address);
       shifted_dmem_data_in := std_logic_vector(shift_left(unsigned(dmem_data_in), data_shift));
 
@@ -85,10 +86,11 @@ begin
         shifted_arb_data_out := std_logic_vector(shift_right(unsigned(arb_data_in), data_shift));
         dmem_data_out  <= shifted_arb_data_out;
         dmem_read_ack  <= '1';
-            end if;
+       end if;
 
     -- Else IMEM if valid and in memory
-                elsif imem_req = '1' and is_mem_addr(imem_address) then
+    -- elsif imem_req = '1' and is_mem_addr(imem_address) then
+    elsif imem_req = '1' then
       data_shift := get_data_shift("00", imem_address);  -- Always word access
       arb_address    <= imem_address;
       arb_sel_out    <= wb_get_data_sel("00", imem_address);

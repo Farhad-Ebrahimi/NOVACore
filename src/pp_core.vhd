@@ -171,14 +171,18 @@ architecture behaviour of pp_core is
 
 	signal wb_exception : STD_LOGIC;
 	signal wb_exception_context : csr_exception_context;
-
+	
+	signal dmem_read_ack_r  : std_logic;
+    signal dmem_write_ack_r : std_logic;
+    signal dmem_data_in_r :std_logic_vector(31 downto 0);
+    
 begin
 
 	stall_if <=  stall_id or delibrate_stall or insert_nop_id;
 	stall_id <= stall_ex;
 	stall_ex <= hazard_detected or stall_mem;
-	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and dmem_read_ack = '0')
-		or to_std_logic(mem_mem_op = MEMOP_TYPE_STORE and dmem_write_ack = '0');
+	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and dmem_read_ack_r = '0')
+		or to_std_logic(mem_mem_op = MEMOP_TYPE_STORE and dmem_write_ack_r = '0');
 		
     jump_inst_id <= '1' when (id_branch/=BRANCH_NONE) else '0';
 
@@ -418,9 +422,9 @@ begin
 			clk => clk,
 			reset => reset,
 			stall => stall_mem,
-			dmem_data_in => dmem_data_in,
-			dmem_read_ack => dmem_read_ack,
-			dmem_write_ack => dmem_write_ack,
+			dmem_data_in => dmem_data_in_r,
+			dmem_read_ack => dmem_read_ack_r,
+			dmem_write_ack => dmem_write_ack_r,
 			pc => ex_pc,
 			rd_write_in => ex_rd_write,
 			rd_write_out => mem_rd_write,
@@ -479,7 +483,13 @@ begin
             if reset = '1' then
                 delibrate_stall <= '0';
                 stall_counter <= 0;
+                dmem_read_ack_r <= '0';
+                dmem_write_ack_r  <= '0';
             else
+                
+                dmem_read_ack_r <= dmem_read_ack;
+                dmem_write_ack_r  <= dmem_write_ack;
+                dmem_data_in_r <= dmem_data_in;
                 if id_mem_op = MEMOP_TYPE_STORE and stall_counter = 0 then
                     delibrate_stall <= '1';
                     stall_counter <= 1;
