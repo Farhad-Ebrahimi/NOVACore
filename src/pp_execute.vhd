@@ -475,7 +475,7 @@ begin
       count_instruction_out => count_instruction_to_stg3,
 
       -- Exception control registers:
-      mtvec_out => mtvec_to_stg3,
+      mtvec_out => mtvec_out,
 
       -- Exception outputs:
       exception_out => exception_to_stg3,

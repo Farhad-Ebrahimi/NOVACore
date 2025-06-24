@@ -28,6 +28,7 @@ entity nv_arbiter is
         ------------------------
         -- Arbiter <-> Memory
         ------------------------
+    arb_mout : out std_logic;
     arb_address : out std_logic_vector(31 downto 0);
     arb_data_out : out std_logic_vector(31 downto 0);
     arb_sel_out : out std_logic_vector(3 downto 0);
@@ -59,12 +60,13 @@ begin
     arb_read_req   <= '0';
     arb_write_req  <= '0';
 
-    -- dmem_data_out  <= (others => '0');
+    dmem_data_out  <= (others => '0');
     dmem_read_ack  <= '0';
     dmem_write_ack <= '0';
 
     imem_data      <= (others => '0');
     imem_ack       <= '0';
+    arb_mout       <= '0';
 
     -- Prioritize DMEM if valid request and valid address
     -- if (dmem_read_req = '1' or dmem_write_req = '1') and is_mem_addr(dmem_address) then
@@ -78,6 +80,7 @@ begin
       arb_read_req   <= dmem_read_req;
       arb_write_req  <= dmem_write_req;
       
+      arb_mout       <= '1';
       --dmem_data_out  <= (others => '0');
 
       if dmem_write_req = '1' and arb_write_ack = '1' then

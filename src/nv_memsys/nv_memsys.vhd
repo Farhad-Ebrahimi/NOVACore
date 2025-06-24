@@ -81,11 +81,17 @@ architecture rtl of nv_memsys is
      signal main_memory_wr_ack : std_logic;
     
     -- memory ack signals 
+    
+    signal read_ack  : std_logic;
+    signal write_ack : std_logic;
     signal read_ack_pending : std_logic;
     signal write_ack_pending : std_logic;
-    signal mem_read_ack_pending : std_logic;
+    signal prev_mout, curr_mout : std_logic;
 
 begin
+    
+    mem_write_ack <= write_ack;
+    mem_read_ack  <= read_ack when prev_mout = curr_mout else '0';
     
     -- Arbiter
     arbiter_inst : entity work.nv_arbiter
@@ -106,6 +112,7 @@ begin
             dmem_write_req => dmem_write_req,
             dmem_write_ack => dmem_write_ack,
             -- Arbiter <-> Memory
+            arb_mout => curr_mout,
             arb_address => mem_address,
             arb_data_in => mem_data_out,
             arb_data_out => mem_data_in,
@@ -193,7 +200,8 @@ begin
     fsbl_rom_dat_out, ssbl_ram_dat_out, --ssbl_ram_valid_data,
     aee_ram_dat_out, main_memory_dat_out
     )
-    begin 
+    begin
+        mem_data_out <= (others => '0'); 
         if mem_read_req = '1' then
             case mem_select is
                 when x"1" => mem_data_out <= fsbl_rom_dat_out;
@@ -211,18 +219,19 @@ begin
     begin
         if rising_edge(clk) then
             if reset = '1' then
-                mem_read_ack <= '0';
-                mem_write_ack <= '0';
+                read_ack <= '0';
+                write_ack <= '0';
                 read_ack_pending <= '0';
                 write_ack_pending <= '0';
             else
-                mem_read_ack <= '0';
-                mem_write_ack <= '0';
+                read_ack <= '0';
+                write_ack <= '0';
+                prev_mout <= curr_mout;
                 case mem_select is
                     when x"1" => -- FSBL READ only
                         write_ack_pending <= '0';
                         if mem_read_req = '1' and read_ack_pending = '0' then
-                                mem_read_ack <= '1';
+                                read_ack <= '1';
                                 read_ack_pending <= '1';
                          else
                             read_ack_pending <= '0';
@@ -230,10 +239,10 @@ begin
                         
                     when x"2" | x"4" | x"8" => -- SSBL, AEE, MAIN_MEM read/writeable
                         if mem_write_req = '1' and write_ack_pending = '0' then
-                            mem_write_ack <= '1';
+                            write_ack <= '1';
                             write_ack_pending <= '1';
                         elsif mem_read_req = '1' and read_ack_pending = '0' then
-                                mem_read_ack <= '1';
+                                read_ack <= '1';
                                 read_ack_pending <= '1';
                          else
                             read_ack_pending <= '0';

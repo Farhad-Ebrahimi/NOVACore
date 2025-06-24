@@ -133,7 +133,7 @@ begin
     -- Making Prediction: compute output target
     ----------------------------------------------------------------------------
 
-    Making_prediction : process (reset, pc_if, pcif_plus4, btb_valid, btb_tag, wrong_prdt, actual_target, actual_taken, pcie_plus4, next_history, next_address)
+    Making_prediction : process (reset, pc_if, pcif_plus4, index_if, btb_valid, btb_tag, wrong_prdt, actual_target, actual_taken, pcie_plus4, next_history, next_address)
     begin
         if reset = '1' then
             trg_addr_o <= RESET_ADDRESS;

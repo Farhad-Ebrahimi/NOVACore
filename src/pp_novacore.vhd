@@ -195,6 +195,7 @@ begin
 			wb_dat_in => wb_dat_in,
 			wb_ack_in => wb_ack_in
 		);
+
 	address_decoder_mux : process (
 		state,
 		dmem_read_ack_memsys, dmem_read_ack_wb,
@@ -205,22 +206,35 @@ begin
 
 		dmem_read_ack <= '0';
 		dmem_write_ack <= '0';
-		-- dmem_data_in <= (others => '0');
 		imem_ack <= '0';
-		--imem_data <= (others => '0');
-
+		imem_data <= (others => '0');
+        dmem_data_in <= (others => '0');
 		case state is
-			when ST_NVDMEM | ST_NVIMEM =>
-				dmem_read_ack <= dmem_read_ack_memsys;
-				dmem_write_ack <= dmem_write_ack_memsys;
-				dmem_data_in <= dmem_data_in_memsys;
-				imem_ack <= imem_ack_memsys;
-				imem_data <= imem_data_memsys;
+			when ST_NVDMEM =>
+			     if dmem_read_ack_memsys = '1' or dmem_write_ack_memsys = '1' then
+				    dmem_read_ack <= dmem_read_ack_memsys;
+				    dmem_write_ack <= dmem_write_ack_memsys;
+				    dmem_data_in <= dmem_data_in_memsys;
+				 end if;
+				--imem_ack <= imem_ack_memsys;
+				--imem_data <= imem_data_memsys;
 
+			when ST_NVIMEM =>
+				--dmem_read_ack <= dmem_read_ack_memsys;
+				--dmem_write_ack <= dmem_write_ack_memsys;
+				--dmem_data_in <= dmem_data_in_memsys;
+				if imem_ack_memsys = '1' then
+				    imem_ack <= imem_ack_memsys;
+				    imem_data <= imem_data_memsys;
+                end if;
+                
 			when ST_WBDMEM =>
-				dmem_read_ack <= dmem_read_ack_wb;
-				dmem_write_ack <= dmem_write_ack_wb;
-				dmem_data_in <= dmem_data_in_wb;
+			    if dmem_read_ack_wb = '1' or dmem_write_ack_wb = '1' then
+				    dmem_read_ack <= dmem_read_ack_wb;
+				    dmem_write_ack <= dmem_write_ack_wb;
+				    dmem_data_in <= dmem_data_in_wb;
+				 end if;
+				
 
 			when others =>
 				null;
@@ -236,39 +250,45 @@ begin
 				case state is
 					when IDLE =>
 						if dmem_read_req = '1' or dmem_write_req = '1' then
-							if is_mem_addr(dmem_address) then
-								-- Handle DMEM fetch (FSBL_ROM, SSBL_RAM, AEE_RAM, Main_Memory)
-								state <= ST_NVDMEM;
-							else
-								-- Peripheral DMEM access (UART/TIMER via Wishbone)
-								state <= ST_WBDMEM;
+						
+							if is_mem_addr(dmem_address) then    
+								state <= ST_NVDMEM;              -- Handle DMEM fetch (FSBL_ROM, SSBL_RAM, AEE_RAM, Main_Memory)
+							else                                 
+								state <= ST_WBDMEM;              -- Peripheral DMEM access (UART/TIMER via Wishbone)
 							end if;
 
-						elsif imem_req = '1' and is_mem_addr(imem_address) then
-							-- Handle IMEM fetch (FSBL_ROM, SSBL_RAM, AEE_RAM, Main_Memory)
-							state <= ST_NVIMEM;
+						elsif imem_req = '1' then
+							
+							if is_mem_addr(imem_address) then    
+								state <= ST_NVIMEM;              -- Handle IMEM fetch (FSBL_ROM, SSBL_RAM, AEE_RAM, Main_Memory)
+							end if;
+						
 						end if;
 
 					when ST_NVDMEM =>
+						
 						if dmem_read_ack_memsys = '1' or dmem_write_ack_memsys = '1' then
 							state <= ST_NVIMEM;
 						end if;
 
 					when ST_WBDMEM =>
+						
 						if dmem_read_ack_wb = '1' or dmem_write_ack_wb = '1' then
 							state <= ST_NVIMEM;
 						end if;
 
 					when ST_NVIMEM =>
+						
 						if dmem_read_req = '1' or dmem_write_req = '1' then
-							-- IMEM fetch is interrupted by DMEM access
-							if is_mem_addr(dmem_address) then
-								state <= ST_NVDMEM;
-							else
-								state <= ST_WBDMEM;
+						
+							if is_mem_addr(dmem_address) then    
+								state <= ST_NVDMEM;             
+							else                                 
+								state <= ST_WBDMEM;          
 							end if;
+							
 						end if;
-
+					
 					when others =>
 						state <= IDLE;
 
@@ -276,5 +296,5 @@ begin
 			end if;
 		end if;
 	end process address_decoder;
-	
+
 end architecture behaviour;

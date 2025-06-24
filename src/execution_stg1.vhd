@@ -410,7 +410,7 @@ end process;
       yd => x_data_out(31 downto 0)
     );
 
-  mulhu_x : process (alu_op, alu_x,alu_y)
+  mulhu_x : process (alu_op, alu_x,alu_y, cmp)
   begin
     x_sign_out(32) <= '0';
     x_data_out(32) <= '0';
@@ -426,7 +426,7 @@ end process;
       yd => y_data_out(31 downto 0)
     );
 
-  mulhu_y : process (alu_op, alu_y)
+  mulhu_y : process (alu_op, alu_y, cmp)
   begin
     y_sign_out(32) <= '0';
     y_data_out(32) <= '0';
