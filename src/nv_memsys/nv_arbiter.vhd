@@ -83,14 +83,17 @@ begin
       arb_mout       <= '1';
       --dmem_data_out  <= (others => '0');
 
-      if dmem_write_req = '1' and arb_write_ack = '1' then
-        dmem_write_ack <= '1';
-      elsif dmem_read_req = '1' and arb_read_ack = '1' then
-        shifted_arb_data_out := std_logic_vector(shift_right(unsigned(arb_data_in), data_shift));
-        dmem_data_out  <= shifted_arb_data_out;
-        dmem_read_ack  <= '1';
+      if dmem_write_req = '1'then
+        if arb_write_ack = '1' then
+                dmem_write_ack <= arb_write_ack;
+            end if;
+      elsif dmem_read_req = '1' then 
+        if arb_read_ack = '1' then
+            shifted_arb_data_out := std_logic_vector(shift_right(unsigned(arb_data_in), data_shift));
+            dmem_data_out  <= shifted_arb_data_out;
+            dmem_read_ack  <= arb_read_ack;
        end if;
-
+     end if;
     -- Else IMEM if valid and in memory
     -- elsif imem_req = '1' and is_mem_addr(imem_address) then
     elsif imem_req = '1' then

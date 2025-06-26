@@ -211,29 +211,28 @@ begin
         dmem_data_in <= (others => '0');
 		case state is
 			when ST_NVDMEM =>
-			     if dmem_read_ack_memsys = '1' or dmem_write_ack_memsys = '1' then
-				    dmem_read_ack <= dmem_read_ack_memsys;
-				    dmem_write_ack <= dmem_write_ack_memsys;
+			     if dmem_read_ack_memsys = '1'then
+				    dmem_read_ack <= '1';
 				    dmem_data_in <= dmem_data_in_memsys;
-				 end if;
+			    elsif (dmem_write_ack_memsys = '1') then
+			         dmem_write_ack <= '1';
+				end if;
 				--imem_ack <= imem_ack_memsys;
 				--imem_data <= imem_data_memsys;
 
 			when ST_NVIMEM =>
-				--dmem_read_ack <= dmem_read_ack_memsys;
-				--dmem_write_ack <= dmem_write_ack_memsys;
-				--dmem_data_in <= dmem_data_in_memsys;
 				if imem_ack_memsys = '1' then
 				    imem_ack <= imem_ack_memsys;
 				    imem_data <= imem_data_memsys;
                 end if;
                 
 			when ST_WBDMEM =>
-			    if dmem_read_ack_wb = '1' or dmem_write_ack_wb = '1' then
-				    dmem_read_ack <= dmem_read_ack_wb;
-				    dmem_write_ack <= dmem_write_ack_wb;
+			    if dmem_read_ack_wb = '1'then
+				    dmem_read_ack <= '1';
 				    dmem_data_in <= dmem_data_in_wb;
-				 end if;
+			    elsif (dmem_write_ack_wb = '1') then
+			         dmem_write_ack <= '1';
+				end if;
 				
 
 			when others =>
