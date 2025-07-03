@@ -89,7 +89,7 @@ architecture behaviour of pp_core is
 
 	-- Branch targets:
 	signal exception_target, branch_target : STD_LOGIC_VECTOR(31 downto 0);
-	signal branch_taken, exception_taken : STD_LOGIC;
+	signal branch_taken, exception_taken_if, exception_taken_mem : STD_LOGIC;
 	signal pcid_bpu, pcie_bpu : STD_LOGIC_VECTOR(31 downto 0);
 	signal jump_inst_ie,jump_inst_id : STD_LOGIC;
 	signal bpu_wrong_prediction : STD_LOGIC;
@@ -147,7 +147,8 @@ architecture behaviour of pp_core is
 	signal ex_branch : branch_type;
 	signal ex_mem_op : memory_operation_type;
 	signal ex_mem_size : memory_operation_size;
-	signal ex_exception_context : csr_exception_context;
+	signal ex_exception_context_if  : csr_exception_context;
+	signal ex_exception_context_mem : csr_exception_context;
 
 	-- Memory stage signals:
 	signal mem_rd_write : STD_LOGIC;
@@ -186,9 +187,9 @@ begin
 		
     jump_inst_id <= '1' when (id_branch/=BRANCH_NONE) else '0';
 
-	flush_if <= (bpu_wrong_prediction or exception_taken) and not stall_if;
-	flush_id <= (bpu_wrong_prediction or exception_taken) and not stall_id;
-	flush_ex <= (bpu_wrong_prediction or exception_taken) and not stall_ex;
+	flush_if <= (bpu_wrong_prediction or exception_taken_if) and not stall_if;
+	flush_id <= (bpu_wrong_prediction or exception_taken_if) and not stall_id;
+	flush_ex <= (bpu_wrong_prediction or exception_taken_if) and not stall_ex;
 
 	------- Control and status module -------
 	csr_unit : entity work.pp_csr_unit
@@ -271,7 +272,7 @@ begin
 			pcid_bpu => id_pc,
 			pcie_bpu => pcie_bpu,
 			do_flush => bpu_wrong_prediction,
-			exception => exception_taken,
+			exception => exception_taken_if,
 			branch_target => branch_target,
 			evec => exception_target,
 			instruction_data => if_instruction,
@@ -372,8 +373,10 @@ begin
 			mtvec_out => exception_target,
 			decode_exception_in => id_exception,
 			decode_exception_cause_in => id_exception_cause,
-			exception_out => exception_taken,
-			exception_context_out => ex_exception_context,
+			exception_out_if => exception_taken_if,
+			exception_context_out_if => ex_exception_context_if,
+			exception_out_mem => exception_taken_mem,
+			exception_context_out_mem => ex_exception_context_mem,
 			jump_out => branch_taken,
 			jump_inst => jump_inst_ie,
 			pcie_bpu => pcie_bpu,
@@ -438,9 +441,9 @@ begin
 			mem_size_in => ex_mem_size,
 			count_instr_in => ex_count_instruction,
 			count_instr_out => mem_count_instruction,
-			exception_in => exception_taken,
+			exception_in => exception_taken_mem,
 			exception_out => mem_exception,
-			exception_context_in => ex_exception_context,
+			exception_context_in => ex_exception_context_mem,
 			exception_context_out => mem_exception_context,
 			csr_addr_in => ex_csr_address,
 			csr_addr_out => mem_csr_address,
@@ -485,6 +488,7 @@ begin
                 stall_counter <= 0;
                 dmem_read_ack_r <= '0';
                 dmem_write_ack_r  <= '0';
+                dmem_data_in_r <= (others => '0');
             else
                 
                 dmem_read_ack_r <= dmem_read_ack;

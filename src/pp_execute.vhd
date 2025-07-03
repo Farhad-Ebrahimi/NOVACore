@@ -95,9 +95,13 @@ entity pp_execute is
     decode_exception_in : in STD_LOGIC;
     decode_exception_cause_in : in csr_exception_cause;
 
-    -- Exception outputs:
-    exception_out : out STD_LOGIC;
-    exception_context_out : out csr_exception_context;
+    -- Exception outputs to IF:
+    exception_out_if : out STD_LOGIC;
+    exception_context_out_if : out csr_exception_context;
+
+    -- Exception outputs to MEM:
+    exception_out_mem : out STD_LOGIC;
+    exception_context_out_mem : out csr_exception_context;
 
     -- Control outputs:
     jump_out : out STD_LOGIC;
@@ -247,6 +251,9 @@ architecture behaviour of pp_execute is
   -- Exception outputs:
   signal exception_to_stg3 : STD_LOGIC;
   signal exception_context_to_stg3 : csr_exception_context;
+  
+  attribute MARK_DEBUG : string;
+  attribute MARK_DEBUG of exception_out_if: signal is "TRUE";
 
 begin
 
@@ -257,7 +264,7 @@ begin
   rd_addr_out <= rd_addr_to_forwarding_stg3;
   rd_write_out <= rd_write_to_forwarding_stg3;
   csr_write_out <= csr_write_to_hazard_stg3;
-  exception_out <= exception_to_stg3;
+  exception_out_mem <= exception_to_hazard_stg3;
 
   update_address : process (clk)
   begin
@@ -374,6 +381,8 @@ begin
     );
 
   pcie_bpu <= pc_to_stg2;
+  exception_out_if <= exception_to_stg2;
+  exception_context_out_if <= exception_context_to_stg2;
 
   exe_stg2_instance : entity work.fp_exe_stg2
     port map(
@@ -475,11 +484,11 @@ begin
       count_instruction_out => count_instruction_to_stg3,
 
       -- Exception control registers:
-      mtvec_out => mtvec_out,
+      mtvec_out => mtvec_to_stg3,
 
       -- Exception outputs:
       exception_out => exception_to_stg3,
-      exception_context_out => exception_context_out
+      exception_context_out => exception_context_to_stg3
 
     );
 
@@ -533,11 +542,11 @@ begin
       count_instruction_in => count_instruction_to_stg3,
 
       -- Exception control registers:
-      --mtvec_in => mtvec_to_stg3,
+      mtvec_in => mtvec_to_stg3,
 
       -- Exception outputs:
-      --exception_in => exception_to_stg3,
-      --exception_context_in => exception_context_to_stg3,
+      exception_in => exception_to_stg3,
+      exception_context_in => exception_context_to_stg3,
 
       -- Data memory outputs:
       dmem_address_out => dmem_address,
@@ -573,14 +582,14 @@ begin
       mem_size_out => mem_size_out,
 
       -- Whether the instruction should be counted:
-      count_instruction_out => count_instruction_out
+      count_instruction_out => count_instruction_out,
 
       -- Exception control registers:
-      --mtvec_out => mtvec_out,
+      mtvec_out => mtvec_out,
 
       -- Exception outputs:
-      --exception_out => exception_to_hazard_stg3,
-      --exception_context_out => exception_context_out
+      exception_out => exception_to_hazard_stg3,
+      exception_context_out => exception_context_out_mem
 
     );
   alu_x_forward : process (
@@ -669,13 +678,13 @@ begin
   detect_csr_hazard : process (
     csr_write_to_stg3, csr_write_to_hazard_stg3, 
     mem_csr_write, wb_csr_write, exception_to_stg3, 
-    mem_exception, wb_exception)
+    exception_to_hazard_stg3, mem_exception, wb_exception)
   begin
 
     csr_hazard_detected <= '0';
 
     if csr_write_to_stg3 /= CSR_WRITE_NONE or csr_write_to_hazard_stg3 /= CSR_WRITE_NONE or mem_csr_write /= CSR_WRITE_NONE or 
-    wb_csr_write /= CSR_WRITE_NONE or exception_to_stg3 = '1' or mem_exception = '1' or wb_exception = '1' then
+    wb_csr_write /= CSR_WRITE_NONE or exception_to_stg3 = '1' or exception_to_hazard_stg3 ='1' or mem_exception = '1' or wb_exception = '1' then
       csr_hazard_detected <= '1';
     end if;
   end process detect_csr_hazard;
