@@ -13,21 +13,14 @@ entity nv_memsys is
     clk : in std_logic;
     reset : in std_logic;
 
-    -- Instruction memory signals
-    imem_address : in std_logic_vector(31 downto 0);
-    imem_data : out std_logic_vector(31 downto 0);
-    imem_req : in std_logic;
-    imem_ack : out std_logic;
-
-    -- Data memory signals
-    dmem_address : in std_logic_vector(31 downto 0);
-    dmem_data_in : in std_logic_vector(31 downto 0);
-    dmem_data_out : out std_logic_vector(31 downto 0);
-    dmem_data_size : in std_logic_vector(1 downto 0);
-    dmem_read_req : in std_logic;
-    dmem_read_ack : out std_logic;
-    dmem_write_req : in std_logic;
-    dmem_write_ack : out std_logic
+    
+    master_in : in std_logic;
+    mem_address : in std_logic_vector(31 downto 0);
+    mem_data_out : out std_logic_vector(31 downto 0); 
+    mem_data_in  : in  std_logic_vector(31 downto 0);
+    mem_byte_sel : in  std_logic_vector(3  downto 0);
+    mem_we_in    : in std_logic;
+    mem_ack_out  : out std_logic
   );
 end entity nv_memsys;
 
@@ -35,16 +28,6 @@ architecture rtl of nv_memsys is
 
   -- Memory region type
   signal mem_select : std_logic_vector (3 downto 0);
-
-  -- Memory interface signals
-  signal mem_address : std_logic_vector(31 downto 0);
-  signal mem_data_in : std_logic_vector(31 downto 0);
-  signal mem_data_out : std_logic_vector(31 downto 0);
-  signal mem_byte_sel : std_logic_vector(3 downto 0);
-  signal mem_read_req : std_logic;
-  signal mem_read_ack : std_logic;
-  signal mem_write_req : std_logic;
-  signal mem_write_ack : std_logic;
 
   -- FSBL ROM signals
   signal fsbl_rom_adr_in : std_logic_vector(9 downto 0);
@@ -82,47 +65,16 @@ architecture rtl of nv_memsys is
 
   -- memory ack signals 
 
-  signal read_ack : std_logic;
+  signal read_ack : std_logic; 
   signal write_ack : std_logic;
   signal read_ack_pending : std_logic;
   signal write_ack_pending : std_logic;
-  signal prev_mout, curr_mout : std_logic;
+  signal prev_master : std_logic;
 
 begin
-
-  mem_write_ack <= write_ack;
-  mem_read_ack <= read_ack when prev_mout = curr_mout else
-    '0';
-
-  -- Arbiter
-  arbiter_inst : entity work.nv_arbiter
-    port map(
-      clk => clk,
-      reset => reset,
-      -- Core <-> Arbiter
-      imem_address => imem_address,
-      imem_data => imem_data,
-      imem_req => imem_req,
-      imem_ack => imem_ack,
-      dmem_address => dmem_address,
-      dmem_data_in => dmem_data_in,
-      dmem_data_out => dmem_data_out,
-      dmem_data_size => dmem_data_size,
-      dmem_read_req => dmem_read_req,
-      dmem_read_ack => dmem_read_ack,
-      dmem_write_req => dmem_write_req,
-      dmem_write_ack => dmem_write_ack,
-      -- Arbiter <-> Memory
-      arb_mout => curr_mout,
-      arb_address => mem_address,
-      arb_data_in => mem_data_out,
-      arb_data_out => mem_data_in,
-      arb_sel_out => mem_byte_sel,
-      arb_read_req => mem_read_req,
-      arb_read_ack => mem_read_ack,
-      arb_write_req => mem_write_req,
-      arb_write_ack => mem_write_ack
-    );
+    
+    mem_ack_out <= write_ack when mem_we_in = '1' and (prev_master = master_in) else 
+                    read_ack when mem_we_in = '0' and (prev_master = master_in) else '0'; 
 
   fsbl_rom_inst : entity work.fsbl_rom_wrapper
     generic map(MEMORY_SIZE => 1024)
@@ -132,7 +84,7 @@ begin
       fsbl_adr_in => fsbl_rom_adr_in,
       fsbl_dat_out => fsbl_rom_dat_out,
       fsbl_cyc_in => fsbl_rom_cyc_in,
-      fsbl_req => mem_read_req,
+      fsbl_req => mem_we_in,
       fsbl_sel_in => fsbl_rom_sel_in
     );
   fsbl_rom_sel_in <= mem_byte_sel;
@@ -152,8 +104,7 @@ begin
     );
   ssbl_ram_adr_in <= mem_address(ssbl_ram_adr_in'range);
   ssbl_ram_dat_in <= mem_data_in;
-  ssbl_ram_we_in <= '1' when mem_write_req = '1' else
-    '0';
+  ssbl_ram_we_in  <= mem_we_in;
   ssbl_ram_sel_in <= mem_byte_sel;
   ssbl_ram_cyc_in <= mem_select(1);
 
@@ -170,8 +121,7 @@ begin
     );
   aee_ram_adr_in <= mem_address(aee_ram_adr_in'range);
   aee_ram_dat_in <= mem_data_in;
-  aee_ram_we_in <= '1' when mem_write_req = '1' else
-    '0';
+  aee_ram_we_in  <= mem_we_in ;
   aee_ram_sel_in <= mem_byte_sel;
   aee_ram_cyc_in <= mem_select(2);
 
@@ -188,23 +138,22 @@ begin
     );
   main_memory_adr_in <= mem_address(main_memory_adr_in'range);
   main_memory_dat_in <= mem_data_in;
-  main_memory_we_in <= '1' when mem_write_req = '1' else
-    '0';
+  main_memory_we_in  <= mem_we_in;
   main_memory_sel_in <= mem_byte_sel;
   main_memory_cyc_in <= mem_select(3);
 
-  memory_select : process (mem_read_req, mem_write_req, mem_address)
+  memory_select : process (mem_address)
   begin
     mem_select <= std_logic_vector(to_unsigned(get_selected_memory(mem_address), 4));
   end process;
   memory_controller : process (
-    mem_select, mem_read_req,
-    fsbl_rom_dat_out, ssbl_ram_dat_out, --ssbl_ram_valid_data,
+    mem_select, mem_we_in, read_ack,
+    fsbl_rom_dat_out, ssbl_ram_dat_out,
     aee_ram_dat_out, main_memory_dat_out
     )
   begin
     mem_data_out <= (others => '0');
-    if mem_read_req = '1' then
+    if mem_we_in = '0' and read_ack = '1' then
       case mem_select is
         when x"1" => mem_data_out <= fsbl_rom_dat_out;
         when x"2" => mem_data_out <= ssbl_ram_dat_out;
@@ -223,16 +172,16 @@ begin
         write_ack <= '0';
         read_ack_pending <= '0';
         write_ack_pending <= '0';
+        prev_master <= '0';
       else
         -- Default values
         read_ack <= '0';
         write_ack <= '0';
-        prev_mout <= curr_mout;
+        prev_master <= master_in;
         case mem_select is
           when x"1" => -- FSBL ROM (read-only)
             write_ack_pending <= '0'; -- Not writable
-
-            if mem_read_req = '1' then
+            if mem_we_in = '0' then
               if read_ack_pending = '0' then
                 read_ack <= '1';
                 read_ack_pending <= '1';
@@ -244,7 +193,7 @@ begin
             end if;
 
           when x"2" | x"4" | x"8" => -- Writable regions
-            if mem_read_req = '1' then
+            if mem_we_in = '0' then
               write_ack_pending <= '0';
               if read_ack_pending = '0' then
                 read_ack <= '1';
@@ -252,7 +201,7 @@ begin
               else
                 read_ack_pending <= '0';
               end if;
-            elsif mem_write_req = '1' then
+            elsif mem_we_in = '1' then
               read_ack_pending <= '0';
               if write_ack_pending = '0' then
                 write_ack <= '1';

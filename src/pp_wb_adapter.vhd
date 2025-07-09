@@ -11,22 +11,22 @@ use work.pp_utilities.all;
 
 --! @brief Wishbone adapter, for connecting the processor to a Wishbone bus when not using caches.
 entity pp_wb_adapter is
-	port(
-		clk   : in std_logic;
+	port (
+		clk : in std_logic;
 		reset : in std_logic;
 
 		-- Processor data memory signals:
-		signal mem_address   : in  std_logic_vector(31 downto 0);
-		signal mem_data_in   : in  std_logic_vector(31 downto 0); -- Data in from the bus
-		signal mem_data_out  : out std_logic_vector(31 downto 0); -- Data out to the bus
-		signal mem_data_size : in  std_logic_vector( 1 downto 0);
-		signal mem_read_req  : in  std_logic;
-		signal mem_read_ack  : out std_logic;
-		signal mem_write_req : in  std_logic;
+		signal mem_address : in std_logic_vector(31 downto 0);
+		signal mem_data_in : in std_logic_vector(31 downto 0); -- Data in from the bus
+		signal mem_data_out : out std_logic_vector(31 downto 0); -- Data out to the bus
+		signal mem_data_size : in std_logic_vector(1 downto 0);
+		signal mem_read_req : in std_logic;
+		signal mem_read_ack : out std_logic;
+		signal mem_write_req : in std_logic;
 		signal mem_write_ack : out std_logic;
 
 		-- Wishbone interface:
-		wb_inputs  : in wishbone_master_inputs;
+		wb_inputs : in wishbone_master_inputs;
 		wb_outputs : out wishbone_master_outputs
 	);
 end entity pp_wb_adapter;
@@ -36,7 +36,7 @@ architecture behaviour of pp_wb_adapter is
 	type states is (IDLE, READ_WAIT_ACK, WRITE_WAIT_ACK);
 	signal state : states;
 
-	signal mem_r_ack : std_logic;
+	signal mem_r_ack, mem_w_ack : std_logic;
 
 	function get_data_shift(size : in std_logic_vector(1 downto 0); address : in std_logic_vector)
 		return natural is
@@ -44,16 +44,16 @@ architecture behaviour of pp_wb_adapter is
 		case size is
 			when b"01" =>
 				if address(1 downto 0) = "00" then
-                    return 0;
-                elsif address(1 downto 0) = "01" then
-                    return 8;
-                elsif address(1 downto 0) = "10" then
-                    return 16;
-                elsif address(1 downto 0) = "11" then
-                    return 24;
-                else
-                    return 0;
-                end if;
+					return 0;
+				elsif address(1 downto 0) = "01" then
+					return 8;
+				elsif address(1 downto 0) = "10" then
+					return 16;
+				elsif address(1 downto 0) = "11" then
+					return 24;
+				else
+					return 0;
+				end if;
 			when b"10" =>
 				if address(1) = '0' then
 					return 0;
@@ -67,58 +67,78 @@ architecture behaviour of pp_wb_adapter is
 
 begin
 
-	mem_write_ack <= '1' when state = WRITE_WAIT_ACK and wb_inputs.ack = '1' else '0';
+	mem_write_ack <= mem_w_ack;
 	mem_read_ack <= mem_r_ack;
 
-	wishbone: process(clk)
+	wishbone_seq : process (clk)
 	begin
 		if rising_edge(clk) then
 			if reset = '1' then
 				state <= IDLE;
-				wb_outputs.cyc <= '0';
-				wb_outputs.stb <= '0';
-				mem_r_ack <= '0';
 			else
 				case state is
 					when IDLE =>
-						mem_r_ack <= '0';
 
 						-- Prioritize requests from the data memory:
 						if mem_write_req = '1' and (not is_mem_addr(mem_address)) then
-							wb_outputs.adr <= mem_address;
-							wb_outputs.dat <= std_logic_vector(shift_left(unsigned(mem_data_in),get_data_shift(mem_data_size, mem_address)));
-							wb_outputs.sel <= wb_get_data_sel(mem_data_size, mem_address);
-							wb_outputs.cyc <= '1';
-							wb_outputs.stb <= '1';
-							wb_outputs.we <= '1';
 							state <= WRITE_WAIT_ACK;
 						elsif mem_read_req = '1' and (not is_mem_addr(mem_address)) then
-							wb_outputs.adr <= mem_address;
-							wb_outputs.sel <= wb_get_data_sel(mem_data_size, mem_address);
-							wb_outputs.cyc <= '1';
-							wb_outputs.stb <= '1';
-							wb_outputs.we <= '0';
 							state <= READ_WAIT_ACK;
 						end if;
+
 					when READ_WAIT_ACK =>
 						if wb_inputs.ack = '1' then
-							mem_data_out <= std_logic_vector(shift_right(unsigned(wb_inputs.dat),get_data_shift(mem_data_size, mem_address)));
-							wb_outputs.cyc <= '0';
-							wb_outputs.stb <= '0';
-							mem_r_ack <= '1';
 							state <= IDLE;
 						end if;
 					when WRITE_WAIT_ACK =>
 						if wb_inputs.ack = '1' then
-							wb_outputs.cyc <= '0';
-							wb_outputs.stb <= '0';
-							wb_outputs.we <= '0';
 							state <= IDLE;
 						end if;
 				end case;
 			end if;
 		end if;
-	end process wishbone;
+	end process;
 
+	wishbone_com : process (state, mem_address, mem_data_size, mem_data_in, wb_inputs.ack, wb_inputs.dat)
+begin
+  -- defaults value
+  wb_outputs.adr     <= (others => '0');
+  wb_outputs.dat     <= (others => '0');
+  wb_outputs.sel     <= (others => '0');
+  wb_outputs.cyc     <= '0';
+  wb_outputs.stb     <= '0';
+  wb_outputs.we      <= '0';
+  mem_data_out       <= (others => '0');
+  mem_r_ack          <= '0';
+  mem_w_ack          <= '0';
 
+  case state is
+    when IDLE =>
+      null;
+    when READ_WAIT_ACK =>
+      wb_outputs.adr <= mem_address;
+      wb_outputs.sel <= wb_get_data_sel(mem_data_size, mem_address);
+      wb_outputs.cyc <= '1';
+      wb_outputs.stb <= '1';
+      wb_outputs.we  <= '0';
+      if wb_inputs.ack = '1' then
+        mem_data_out <= std_logic_vector( shift_right(unsigned(wb_inputs.dat), get_data_shift(mem_data_size, mem_address)));
+        mem_r_ack    <= '1';
+      end if;
+
+    when WRITE_WAIT_ACK =>
+      wb_outputs.adr <= mem_address;
+      wb_outputs.dat <= std_logic_vector(shift_left(unsigned(mem_data_in), get_data_shift(mem_data_size, mem_address)));
+      wb_outputs.sel <= wb_get_data_sel(mem_data_size, mem_address);
+      wb_outputs.cyc <= '1';
+      wb_outputs.stb <= '1';
+      wb_outputs.we  <= '1';
+      if wb_inputs.ack = '1' then
+        mem_w_ack <= '1';
+      end if;
+
+  end case;
+end process;
+
+	
 end architecture behaviour;

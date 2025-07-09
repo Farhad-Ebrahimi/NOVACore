@@ -60,6 +60,15 @@ architecture behaviour of pp_novacore is
 	signal dmem_read_ack : std_logic;
 	signal dmem_write_req : std_logic;
 	signal dmem_write_ack : std_logic;
+	
+	-- Memory interface signals
+    signal mem_address : std_logic_vector(31 downto 0);
+    signal mem_data_in : std_logic_vector(31 downto 0);
+    signal mem_data_out : std_logic_vector(31 downto 0);
+    signal mem_byte_sel : std_logic_vector(3 downto 0);
+    signal mem_we_in : std_logic;
+    signal mem_ack_out : std_logic;
+    signal master_out : std_logic;
 
 	-- Instruction memory signals (nv_memsys)
 	signal imem_data_memsys : std_logic_vector(31 downto 0);
@@ -124,6 +133,38 @@ begin
 			test_context_out => test_context_out,
 			irq => irq
 		);
+		
+    ----------------------------------------------------------------------------------------------------
+	-- memory interface: Core <--> arbiter(priority : DMEM > IMEM)  <--> FSBL_ROM, SSBL_RAM, AEE_RAM, MM    
+	-----------------------------------------------------------------------------------------------------
+	
+    arbiter_inst : entity work.nv_arbiter
+      port map(
+        clk => clk,
+        reset => reset,
+        -- Core <-> Arbiter
+        imem_address => imem_address,
+        imem_data => imem_data_memsys,
+        imem_req => imem_req,
+        imem_ack => imem_ack_memsys,
+        dmem_address => dmem_address,
+        dmem_data_in => dmem_data_out,
+        dmem_data_out => dmem_data_in_memsys,
+        dmem_data_size => dmem_data_size,
+        dmem_read_req => dmem_read_req,
+        dmem_read_ack => dmem_read_ack_memsys,
+        dmem_write_req => dmem_write_req,
+        dmem_write_ack => dmem_write_ack_memsys,
+        -- Arbiter <-> Memory
+        arb_mout => master_out,
+        arb_address => mem_address,
+        arb_data_in => mem_data_out,
+        arb_data_out => mem_data_in,
+        arb_sel_out => mem_byte_sel,
+        arb_we_out  => mem_we_in,
+        arb_ack_in  => mem_ack_out
+      );
+    
 
 	-- nv_memsys: instruction & data memory
 	instance_memsys : entity work.nv_memsys
@@ -133,18 +174,14 @@ begin
 		port map(
 			clk => clk,
 			reset => reset,
-			imem_address => imem_address,
-			imem_data => imem_data_memsys,
-			imem_req => imem_req,
-			imem_ack => imem_ack_memsys,
-			dmem_address => dmem_address,
-			dmem_data_in => dmem_data_out,
-			dmem_data_out => dmem_data_in_memsys,
-			dmem_data_size => dmem_data_size,
-			dmem_read_req => dmem_read_req,
-			dmem_read_ack => dmem_read_ack_memsys,
-			dmem_write_req => dmem_write_req,
-			dmem_write_ack => dmem_write_ack_memsys
+			
+            master_in => master_out,
+            mem_address => mem_address,
+            mem_data_out => mem_data_out, 
+            mem_data_in  => mem_data_in,
+            mem_byte_sel => mem_byte_sel,
+            mem_we_in    => mem_we_in,
+            mem_ack_out  => mem_ack_out
 		);
 
 	--------------------------------------------------------
@@ -197,7 +234,7 @@ begin
 		);
 
 	address_decoder_mux : process (
-		state,
+		state, dmem_read_req, dmem_write_req,
 		dmem_read_ack_memsys, dmem_read_ack_wb,
 		dmem_write_ack_memsys, dmem_write_ack_wb,
 		dmem_data_in_memsys, dmem_data_in_wb,
@@ -221,7 +258,7 @@ begin
 				--imem_data <= imem_data_memsys;
 
 			when ST_NVIMEM =>
-				if imem_ack_memsys = '1' then
+				if dmem_read_req = '0' and dmem_write_req = '0' and imem_ack_memsys = '1' then
 				    imem_ack <= imem_ack_memsys;
 				    imem_data <= imem_data_memsys;
                 end if;
@@ -236,7 +273,11 @@ begin
 				
 
 			when others =>
-				null;
+				dmem_read_ack <= '0';
+		        dmem_write_ack <= '0';
+		        imem_ack <= '0';
+		        imem_data <= (others => '0');
+                dmem_data_in <= (others => '0');
 		end case;
 	end process;
 
@@ -285,7 +326,8 @@ begin
 							else                                 
 								state <= ST_WBDMEM;          
 							end if;
-							
+--						elsif imem_ack_memsys = '1' then
+--							state <= ST_WBDMEM;
 						end if;
 					
 					when others =>
@@ -295,5 +337,5 @@ begin
 			end if;
 		end if;
 	end process address_decoder;
-
+		
 end architecture behaviour;

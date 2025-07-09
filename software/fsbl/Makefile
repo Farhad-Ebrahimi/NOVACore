@@ -5,13 +5,15 @@
 .PHONY: all clean
 include ../common.mk
 
-TARGET_LDFLAGS += -Wl,-Tfsbl.ld -Wl,--Map,fsbl.map
+LINKER_SCRIPT = fsbl.ld
+
+TARGET_LDFLAGS += -Wl,-T$(LINKER_SCRIPT) -Wl,--Map=fsbl.map
 
 OBJECTS := fsbl.o start.o
 
 all: fsbl.elf fsbl.bin fsbl.coe
 
-fsbl.elf: $(OBJECTS)
+fsbl.elf: $(OBJECTS) $(LINKER_SCRIPT)
 	$(TARGET_LD) -o fsbl.elf $(TARGET_LDFLAGS) $(OBJECTS)
 	$(TARGET_SIZE) fsbl.elf
 

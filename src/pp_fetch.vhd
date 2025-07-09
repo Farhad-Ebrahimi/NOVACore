@@ -69,6 +69,7 @@ begin
 			if reset = '1' then
 				pc <= RESET_ADDRESS;
 				cancel_fetch <= '0';
+				imem_data <= (others=>'0');
 			else
 				if (exception = '1' or wrong_prediction = '1') and imem_ack = '0' then
 					cancel_fetch <= '1';
