@@ -22,7 +22,7 @@ void fill_matrices() {
     }
 }
 
-void multiply_matrices() {
+int multiply_matrices() {
 	mul_op = 0;
 	add_op = 0;
     for (int i = 0; i < SIZE; i++) {
@@ -35,6 +35,9 @@ void multiply_matrices() {
 			add_op  -= 1;
         }
     }
+	return mul_op + add_op;
+}
+	/*
 	uart_tx_string(&uart0, "MATRIX [SIZE][SIZE]: ");
 	int2string(SIZE, int2str);
 	uart_tx_string(&uart0, "[");
@@ -52,7 +55,7 @@ void multiply_matrices() {
 	uart_tx_string(&uart0, int2str);
 	uart_tx_string(&uart0, "\n\n\r");
 }
-
+/*
 void print_result() {
     // Just print part of the matrix to verify
 	for (int i = 0; i < SIZE; i++) {
@@ -85,7 +88,7 @@ void print_result() {
 		uart_tx_string(&uart0, "\n\r");
     }
 }
-
+*/
 void int2string(int n, char *s)
 {
 	bool first = true;

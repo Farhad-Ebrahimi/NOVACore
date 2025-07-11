@@ -10,14 +10,14 @@
 #include "../libsoc/timer.h"
 #include "../libsoc/uart.h"
 
-#define SIZE 20
+#define SIZE 23
 
 extern struct uart uart0;
 
 void int2string(int n, char *s);
 void int2hex32(uint32_t n, char *s);
 void fill_matrices();
-void multiply_matrices();
+int multiply_matrices();
 void print_result();
 
 
