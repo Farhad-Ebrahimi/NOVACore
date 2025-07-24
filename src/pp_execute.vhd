@@ -690,22 +690,22 @@ begin
   end process detect_csr_hazard;
 
   -- potential data hazard (RAW) due to CSD Arithme operations ->IE1/->IE3
-  detect_csd_instr_hazard : process (alu_op_to_forwarding_stg3, rd_write_to_forwarding_stg3, rd_addr_to_forwarding_stg3, rs1_addr, rs2_addr)
-    variable csd_hazard : std_logic := '0';
-  begin
+--  detect_csd_instr_hazard : process (alu_op_to_forwarding_stg3, rd_write_to_forwarding_stg3, rd_addr_to_forwarding_stg3, rs1_addr, rs2_addr)
+--    variable csd_hazard : std_logic := '0';
+--  begin
 
-    csd_hazard := '0';
-    if (rd_write_to_forwarding_stg3 = '1' and (rd_addr_to_forwarding_stg3 = rs1_addr or rd_addr_to_forwarding_stg3 = rs2_addr) 
-    and rd_addr_to_forwarding_stg3 /= b"00000" and is_csd_op(alu_op_to_forwarding_stg3)) then
+--    csd_hazard := '0';
+--    if (rd_write_to_forwarding_stg3 = '1' and (rd_addr_to_forwarding_stg3 = rs1_addr or rd_addr_to_forwarding_stg3 = rs2_addr) 
+--    and rd_addr_to_forwarding_stg3 /= b"00000" and is_csd_op(alu_op_to_forwarding_stg3)) then
 
-      csd_hazard := '1';
+--      csd_hazard := '1';
 
-    end if;
+--    end if;
 
-    csd_instruction_hazard <= csd_hazard;
+--    csd_instruction_hazard <= csd_hazard;
 
-  end process detect_csd_instr_hazard;
+--  end process detect_csd_instr_hazard;
   
-  hazard_detected <= load_hazard_detected or csr_hazard_detected or (csd_instruction_hazard);
+  hazard_detected <= load_hazard_detected or csr_hazard_detected ;--or (csd_instruction_hazard);
 
 end architecture behaviour;

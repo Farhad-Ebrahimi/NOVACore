@@ -83,11 +83,11 @@ end function;
     function is_mem_addr(addr : std_logic_vector(31 downto 0)) return boolean is
     begin
         case addr(31 downto 16) is
-            when x"0000" | x"0001" => 
+            when x"0000" => --| x"0001" => 
                 return true;
             when x"FFFF" =>
                case addr(15 downto 10) is
-                when b"100000" | b"100001" | b"100010" | b"100011" | b"100100" =>
+                when b"100000" | b"100001" | b"100010" => --| b"100011" | b"100100" =>
                     return true;
                 when others =>
                     return false;
@@ -99,7 +99,7 @@ end function;
     function get_selected_memory(mem_address : std_logic_vector(31 downto 0)) return natural is
         variable mem : natural;
     begin
-        if mem_address(31 downto 16) = x"0000" or mem_address(31 downto 16) = x"0001" then
+        if mem_address(31 downto 16) = x"0000" then --or mem_address(31 downto 16) = x"0001" then
             mem := 8;
         elsif mem_address(31 downto 16) = x"FFFF" then
             case mem_address(15 downto 10) is
@@ -107,8 +107,8 @@ end function;
                     mem := 1;
                 when b"100001" | b"100010" =>
                     mem := 2;
-                when b"100011" | b"100100" =>
-                    mem := 4;
+--                when b"100011" | b"100100" =>
+--                    mem := 4;
                 when others =>
                     mem := 0;
             end case;

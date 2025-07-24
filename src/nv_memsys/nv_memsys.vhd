@@ -44,14 +44,14 @@ architecture rtl of nv_memsys is
   signal ssbl_ram_we_in : std_logic;
 
   -- AEE RAM signals
-  signal aee_ram_adr_in : std_logic_vector(10 downto 0);
-  signal aee_ram_dat_in : std_logic_vector(31 downto 0);
-  signal aee_ram_dat_out : std_logic_vector(31 downto 0);
-  signal aee_ram_cyc_in : std_logic;
-  signal aee_ram_sel_in : std_logic_vector(3 downto 0);
-  signal aee_ram_we_in : std_logic;
-  signal aee_ram_rd_ack : std_logic;
-  signal aee_ram_wr_ack : std_logic;
+--  signal aee_ram_adr_in : std_logic_vector(10 downto 0);
+--  signal aee_ram_dat_in : std_logic_vector(31 downto 0);
+--  signal aee_ram_dat_out : std_logic_vector(31 downto 0);
+--  signal aee_ram_cyc_in : std_logic;
+--  signal aee_ram_sel_in : std_logic_vector(3 downto 0);
+--  signal aee_ram_we_in : std_logic;
+--  signal aee_ram_rd_ack : std_logic;
+--  signal aee_ram_wr_ack : std_logic;
 
   -- Main memory signals
   signal main_memory_adr_in : std_logic_vector(12 downto 0);
@@ -108,22 +108,22 @@ begin
   ssbl_ram_sel_in <= mem_byte_sel;
   ssbl_ram_cyc_in <= mem_select(1);
 
-  aee_ram_inst : entity work.aee_ram_wrapper
-    port map(
-      clk => clk,
-      rst => reset,
-      addr => aee_ram_adr_in,
-      din => aee_ram_dat_in,
-      dout => aee_ram_dat_out,
-      csb => aee_ram_cyc_in,
-      wmask => aee_ram_sel_in,
-      web => aee_ram_we_in
-    );
-  aee_ram_adr_in <= mem_address(aee_ram_adr_in'range);
-  aee_ram_dat_in <= mem_data_in;
-  aee_ram_we_in  <= mem_we_in ;
-  aee_ram_sel_in <= mem_byte_sel;
-  aee_ram_cyc_in <= mem_select(2);
+--  aee_ram_inst : entity work.aee_ram_wrapper
+--    port map(
+--      clk => clk,
+--      rst => reset,
+--      addr => aee_ram_adr_in,
+--      din => aee_ram_dat_in,
+--      dout => aee_ram_dat_out,
+--      csb => aee_ram_cyc_in,
+--      wmask => aee_ram_sel_in,
+--      web => aee_ram_we_in
+--    );
+--  aee_ram_adr_in <= mem_address(aee_ram_adr_in'range);
+--  aee_ram_dat_in <= mem_data_in;
+--  aee_ram_we_in  <= mem_we_in ;
+--  aee_ram_sel_in <= mem_byte_sel;
+--  aee_ram_cyc_in <= mem_select(2);
 
   main_memory_inst : entity work.main_memory_wrapper
     port map(
@@ -149,7 +149,7 @@ begin
   memory_controller : process (
     mem_select, mem_we_in, read_ack,
     fsbl_rom_dat_out, ssbl_ram_dat_out,
-    aee_ram_dat_out, main_memory_dat_out
+    main_memory_dat_out -- aee_ram_dat_out
     )
   begin
     mem_data_out <= (others => '0');
@@ -157,7 +157,7 @@ begin
       case mem_select is
         when x"1" => mem_data_out <= fsbl_rom_dat_out;
         when x"2" => mem_data_out <= ssbl_ram_dat_out;
-        when x"4" => mem_data_out <= aee_ram_dat_out;
+        --when x"4" => mem_data_out <= aee_ram_dat_out;
         when x"8" => mem_data_out <= main_memory_dat_out;
         when others => null;
       end case;
@@ -192,7 +192,7 @@ begin
               read_ack_pending <= '0';
             end if;
 
-          when x"2" | x"4" | x"8" => -- Writable regions
+          when x"2" | x"8" => -- Writable regions
             if mem_we_in = '0' then
               write_ack_pending <= '0';
               if read_ack_pending = '0' then
