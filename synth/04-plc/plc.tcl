@@ -8,7 +8,7 @@ read_design ${last_step}
 
 global_placement -skip_io -pad_left 1 -pad_right 1
 
-place_pins -hor_layers $horizontal_pin_layer -ver_layers $vertical_pin_layer
+place_pins -hor_layers $horizontal_pin_layer -ver_layers $vertical_pin_layer -min_distance 6
 
 #proc ::TracePuts args {
 #	puts $args

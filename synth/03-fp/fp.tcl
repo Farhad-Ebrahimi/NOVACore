@@ -57,7 +57,7 @@ if {$manual_placement == 1} {
 } else {
 	initialize_floorplan -site $site_name \
 		-utilization $utilization \
-		-aspect_ratio 0.35 \
+		-aspect_ratio 1 \
 		-core_space "$bt_margin $bt_margin $lr_margin $lr_margin"
 }
 

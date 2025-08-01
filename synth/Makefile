@@ -82,6 +82,11 @@ build/%.spice: spcxtr/spcxtr.tcl build/%.gds
 	env DESIGN=$(basename $(notdir $@)) magic -dnull -rcfile $(PDK_ROOT)/$(PDK)/libs.tech/magic/ihp-sg13g2.magicrc -noconsole -nowindow $<
 	@cp build/ext2spice/$(basename $(notdir $@)).spice build
 
+build/08-poststa/%.nl.v: 08-poststa/sta.tcl build/06-rt/%.nl.v
+	@mkdir -p build/08-poststa/sdf
+	@mkdir -p build/08-poststa/lib
+	env DESIGN=$(call designname,$@) IDEAL_CLOCK=0 sta -no_splash -exit $<
+
 clean:
 	@rm -rf build
 
