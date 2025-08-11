@@ -2,10 +2,6 @@ set last_step      "02-sta"
 set this_step      "03-fp"
 set site_name      "CoreSite"
 set utilization    70
-set power_net      "VDD"
-set std_power_pin  "VDD!"
-set ground_net     "VSS"
-set std_ground_pin "VSS!"
 set sram_power_pin "VDDARRAY!"
 set halo_width     10
 set macro_width    784.480
