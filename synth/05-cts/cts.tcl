@@ -18,6 +18,8 @@ repair_clock_nets
 detailed_placement
 repair_timing -match_cell_footprint
 
+global_connect
+
 report_cts -out_file "$res_dir/${this_step}/cts.rpt"
 
 write_design ${this_step}

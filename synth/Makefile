@@ -24,6 +24,10 @@ define designname
 $(shell echo $(1) | sed 's/^.*\///;s/\..*$$//')
 endef
 
+define tail
+$(shell echo $(1) )
+endef
+
 export PDK_ROOT
 export PDK
 export RCX_RULES
@@ -45,19 +49,19 @@ build/02-sta/%.nl.v: 02-sta/sta.tcl build/01-synth/%.v
 	@mkdir -p build/02-sta/lib
 	env DESIGN=$(call designname,$@) IDEAL_CLOCK=1 sta -no_splash -exit $<
 
-build/03-fp/%.odb build/03-fp/%.cdl build/03-fp/%.sdc build/03-fp/%.pnl.v build/03-fp/%.nl.v build/03-fp/%.def: 03-fp/fp.tcl utils/base.sdc build/02-sta/%.nl.v utils/utils.tcl
+build/03-fp/%.odb build/03-fp/%.cdl build/03-fp/%.sdc build/03-fp/%.pnl.v build/03-fp/%.nl.v build/03-fp/%.def &: 03-fp/fp.tcl utils/base.sdc build/02-sta/%.nl.v utils/utils.tcl
 	@mkdir -p build/03-fp
 	env DESIGN=$(call designname,$@) IDEAL_CLOCK=1 openroad -no_splash -exit $<
 
-build/04-plc/%.odb build/04-plc/%.cdl build/04-plc/%.sdc build/04-plc/%.pnl.v build/04-plc/%.nl.v build/04-plc/%.def: 04-plc/plc.tcl utils/base.sdc build/03-fp/%.odb utils/utils.tcl
+build/04-plc/%.odb build/04-plc/%.cdl build/04-plc/%.sdc build/04-plc/%.pnl.v build/04-plc/%.nl.v build/04-plc/%.def &: 04-plc/plc.tcl utils/base.sdc build/03-fp/%.odb utils/utils.tcl
 	@mkdir -p build/04-plc
 	env DESIGN=$(call designname,$@) IDEAL_CLOCK=1 openroad -no_splash -exit $<
 
-build/05-cts/%.odb build/05-cts/%.cdl build/05-cts/%.sdc build/05-cts/%.pnl.v build/05-cts/%.nl.v build/05-cts/%.def: 05-cts/cts.tcl utils/base.sdc utils/utils.tcl build/04-plc/%.odb
+build/05-cts/%.odb build/05-cts/%.cdl build/05-cts/%.sdc build/05-cts/%.pnl.v build/05-cts/%.nl.v build/05-cts/%.def &: 05-cts/cts.tcl utils/base.sdc utils/utils.tcl build/04-plc/%.odb
 	@mkdir -p build/05-cts
 	env DESIGN=$(call designname,$@) IDEAL_CLOCK=1 openroad -no_splash -exit $<
 
-build/06-rt/%.odb build/06-rt/%.cdl build/06-rt/%.sdc build/06-rt/%.pnl.v build/06-rt/%.nl.v build/06-rt/%.def: 06-rt/rt.tcl utils/base.sdc utils/utils.tcl build/05-cts/%.odb
+build/06-rt/%.odb build/06-rt/%.cdl build/06-rt/%.sdc build/06-rt/%.pnl.v build/06-rt/%.nl.v build/06-rt/%.def &: 06-rt/rt.tcl utils/base.sdc utils/utils.tcl build/05-cts/%.odb
 	@mkdir -p build/06-rt
 	env DESIGN=$(call designname,$@) IDEAL_CLOCK=0 openroad -no_splash -exit $<
 
@@ -72,6 +76,14 @@ build/07-misc/%.gds: build/06-rt/%.def 07-misc/stream_out.py
 		--lym ${LYM_FILE} \
 		--with-gds-file ${STDCELL_GDS} \
 		-t $(call designname,$@)
+
+build/07-misc/%.cdl: build/06-rt/%.cdl ${STDCELL_CDL}
+	@mkdir -p build/07-misc
+	cat $^ > $@
+
+build/07-misc/%.lvsdb: build/07-misc/%.gds build/07-misc/%.cdl
+	@mkdir -p build/07-misc/lvs
+	./07-misc/run_lvs.py --layout=$< --run_dir=build/07-lvs/ --netlist=$(filter-out $<,$^)
 
 build/07-misc/%.spef: 07-misc/rcx.tcl
 	@mkdir -p build/07-misc

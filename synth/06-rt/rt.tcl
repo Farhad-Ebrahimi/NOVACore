@@ -49,6 +49,8 @@ if {![design_is_routed]} {
 ##########################################################################################
 
 filler_placement $fill_cells
+# Filler_placement also places decap cells
+global_connect
 check_placement
 
 write_design ${this_step}
