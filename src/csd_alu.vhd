@@ -32,7 +32,7 @@ architecture behaviour of csd_alu is
 constant GND : std_logic := '0';
 
 signal TX,TY: std_logic_vector(65 downto 0);
-signal AR,SR,TR: std_logic_vector(63 downto 0);
+signal ASR,TR: std_logic_vector(63 downto 0);
 signal op: std_logic_vector(1 downto 0);
 
 begin    
@@ -41,21 +41,30 @@ begin
         TX(2*i) <= xs(i);
     end generate GENERATE0;
     
-    GENERATE1: for i in 0 to 32 generate
-       TY((2*i)+1)<= yd(i);
-       TY(2*i) <= ys(i);
-     end generate GENERATE1;
+    process(operation, ys, yd)
+    begin
+        for i in 0 to 32 loop
+            if operation = ALU_SUB then
+                TY((2*i)+1) <= ys(i);
+                TY(2*i)     <= yd(i);
+            else
+                TY((2*i)+1) <= yd(i);
+                TY(2*i)     <= ys(i);
+            end if;
+        end loop;
+    end process;
+
    
     mul_stg2: entity work.mul_stg2(Arch_32bit) port map(Xi=>TX, Yi=>TY, W1=>W1, W2=>W2, W3=>W3, W4=>W4, Lpp=>Lpp);
-    Add: entity work.CFSD_Adder(Arch_32bit) port map(Xi=>TX(63 downto 0), Yi=>TY(63 downto 0), Ci_Plus=>GND, Ci_Minus=>GND, Sum(65 downto 64)=>op, Sum(63 downto 0)=>AR);
-    Sub: entity work.BFSD_Sub(Arch_32bit) port map(Xi=>TX(63 downto 0), Yi=>TY(63 downto 0), Ci_Plus=>GND, Ci_Minus=>GND, Sub=>SR);
+    Add_sub: entity work.CFSD_Adder(Arch_32bit) port map(Xi=>TX(63 downto 0), Yi=>TY(63 downto 0), Ci_Plus=>GND, Ci_Minus=>GND, Sum(65 downto 64)=>op, Sum(63 downto 0)=>ASR);
     
-	calculate_TR: process(operation,AR, SR)
+	calculate_TR: process(operation,ASR)
 	begin
 		case operation is
-			when ALU_ADD => TR <= AR;
-			when ALU_SUB => TR <= SR;
-			when others => TR <= (others => '0');
+			when ALU_ADD | ALU_SUB=> 
+			     TR <= ASR;
+			when others => 
+			     TR <= (others => '0');
 		end case;
 	end process calculate_TR;
 	
