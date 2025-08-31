@@ -28,8 +28,8 @@ set_operating_conditions -heatsink low
 #set_property -dict {PACKAGE_PIN F8 IOSTANDARD LVCMOS18} [get_ports uart0_rxd]
 
 # UART1 (pin 5 and 6 on JA, to match the pins on the PMOD-GPS):
-set_property -dict {PACKAGE_PIN P1 IOSTANDARD LVCMOS12} [get_ports {uart1_txd}]
-set_property -dict {PACKAGE_PIN N2 IOSTANDARD LVCMOS12} [get_ports {uart1_rxd}]
+set_property -dict {PACKAGE_PIN P1 IOSTANDARD LVCMOS12} [get_ports uart1_txd]
+set_property -dict {PACKAGE_PIN N2 IOSTANDARD LVCMOS12} [get_ports uart1_rxd]
 
 #rst_gpio led # "A9.RADIO_LED0"
 set_property -dict {PACKAGE_PIN A9 IOSTANDARD LVCMOS18} [get_ports led]
@@ -39,3 +39,7 @@ set_property -dict {PACKAGE_PIN A9 IOSTANDARD LVCMOS18} [get_ports led]
 
 
 
+
+create_pblock pblock_processor
+add_cells_to_pblock [get_pblocks pblock_processor] [get_cells -quiet [list zynq_i/NOVACore/U0/processor/processor]]
+resize_pblock [get_pblocks pblock_processor] -add {CLOCKREGION_X0Y0:CLOCKREGION_X1Y0}

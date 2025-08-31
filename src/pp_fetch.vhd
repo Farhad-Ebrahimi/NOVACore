@@ -55,7 +55,7 @@ begin
 
 	imem_address <= pc_next when cancel_fetch = '0' else pc;
 
-	do_flush <= wrong_prediction;
+	do_flush <= branch;
 	
 	instruction_data <= imem_data_in when ( stall = '0' and imem_ack='1' ) else imem_data;
 	instruction_ready <= imem_ack and (not stall) and (not cancel_fetch);
@@ -63,15 +63,14 @@ begin
 
 	imem_req <= not reset;
 
-	set_pc : process (clk)
+	set_pc: process(clk)
 	begin
 		if rising_edge(clk) then
 			if reset = '1' then
 				pc <= RESET_ADDRESS;
 				cancel_fetch <= '0';
-				imem_data <= (others=>'0');
 			else
-				if (exception = '1' or wrong_prediction = '1') and imem_ack = '0' then
+				if (exception = '1' or branch = '1') and imem_ack = '0' then
 					cancel_fetch <= '1';
 					pc <= pc_next;
 				elsif cancel_fetch = '1' and imem_ack = '1' then
@@ -79,46 +78,21 @@ begin
 				else
 					pc <= pc_next;
 				end if;
-				if stall = '0' and imem_ack = '1' then
-				    imem_data <= imem_data_in;
-				end if;
 			end if;
 		end if;
 	end process set_pc;
 
-	calc_next_pc : process (reset, stall, exception, imem_ack, evec, pc, cancel_fetch, wrong_prediction, predicted_target)
+	calc_next_pc: process(reset, stall, branch, exception, imem_ack, branch_target, evec, pc, cancel_fetch)
 	begin
 		if exception = '1' then
 			pc_next <= evec;
-		elsif wrong_prediction = '1' then
-			pc_next <= predicted_target;
+		elsif branch = '1' then
+			pc_next <= branch_target;
 		elsif imem_ack = '1' and stall = '0' and cancel_fetch = '0' then
-			pc_next <= predicted_target;
+			pc_next <= std_logic_vector(unsigned(pc) + 4);
 		else
 			pc_next <= pc;
 		end if;
 	end process calc_next_pc;
-
-	Branch_prediction_unit : entity work.bpu
-		generic map
-		(
-			INDEX_WIDTH => 8,
-			RESET_ADDRESS => RESET_ADDRESS
-		)
-		port map
-		(
-			clk => clk,
-			reset => reset,
-			stall => stall,
-			jump_inst_id => jump_inst_id,
-			jump_inst_ie => jump_inst_ie,
-			actual_taken => branch,
-			actual_target => branch_target,
-			pc_if => pc,
-			pc_id => pcid_bpu,
-			pc_ie => pcie_bpu,
-			do_flush => wrong_prediction,
-			trg_addr_o => predicted_target
-		);
-
+	
 end architecture behaviour;
