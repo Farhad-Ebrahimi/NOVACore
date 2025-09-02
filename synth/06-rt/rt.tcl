@@ -5,7 +5,7 @@ source "./utils/utils.tcl"
 read_design ${last_step}
 set_rc
 
-set_global_routing_layer_adjustment ${min_routing_layer}-${max_routing_layer} 0.05
+set_global_routing_layer_adjustment * 0.0
 set_routing_layers -signal ${min_routing_layer}-${max_routing_layer}
 set_placement_padding -global -right $cell_pad_side -left $cell_pad_side
 
