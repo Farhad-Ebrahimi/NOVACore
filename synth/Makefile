@@ -81,9 +81,9 @@ build/07-misc/%.cdl: build/06-rt/%.cdl ${STDCELL_CDL}
 	@mkdir -p build/07-misc
 	cat $^ > $@
 
-build/07-misc/%.lvsdb: build/07-misc/%.gds build/07-misc/%.cdl
+build/07-misc/lvs/%.lvsdb: build/07-misc/%.gds build/07-misc/%.cdl
 	@mkdir -p build/07-misc/lvs
-	./07-misc/run_lvs.py --layout=$< --run_dir=build/07-lvs/ --netlist=$(filter-out $<,$^)
+	./07-misc/run_lvs.py --layout=$< --run_dir=build/07-misc/lvs --netlist=$(filter-out $<,$^)
 
 build/07-misc/%.spef: 07-misc/rcx.tcl
 	@mkdir -p build/07-misc
