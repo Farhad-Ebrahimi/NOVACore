@@ -82,6 +82,7 @@ architecture behaviour of pp_core is
 
 	-- Hazard detected in the execute stage:
 	signal hazard_detected : std_logic;
+  signal stall_srt_div   : std_logic;
 
 	-- Branch targets:
 	signal exception_target, branch_target : std_logic_vector(31 downto 0);
@@ -168,7 +169,7 @@ begin
 
 	stall_if <= stall_id;
 	stall_id <= stall_ex;
-	stall_ex <= hazard_detected or stall_mem;
+  stall_ex <= hazard_detected or stall_srt_div or stall_mem;
 	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and dmem_read_ack = '0')
 		or to_std_logic(mem_mem_op = MEMOP_TYPE_STORE and dmem_write_ack = '0');
 
@@ -366,7 +367,8 @@ begin
 			wb_csr_write => wb_csr_write,
 			wb_exception => wb_exception,
 			mem_mem_op => mem_mem_op,
-			hazard_detected => hazard_detected
+			hazard_detected => hazard_detected,
+      stall_srt_div => stall_srt_div
 		);
 
 	dmem_address <= ex_dmem_address when stall_mem = '0' else dmem_address_p;

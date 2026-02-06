@@ -122,7 +122,8 @@ entity pp_execute is
 
     -- Hazard detection unit signals:
     mem_mem_op      : in memory_operation_type;
-    hazard_detected : out std_logic
+    hazard_detected : out std_logic;
+    stall_srt_div   : out std_logic
   );
 end entity pp_execute;
 
@@ -197,6 +198,17 @@ architecture behaviour of pp_execute is
   signal y_sign_to_stg2         : std_logic_vector(32 downto 0);
   signal y_data_to_stg2         : std_logic_vector(32 downto 0);
   signal alu_y_to_stg2          : std_logic_vector(31 downto 0);
+
+  -- division inputs
+  signal a_sign_to_stg2       : std_logic;
+  signal b_sign_to_stg2       : std_logic;
+  signal a_norm_to_stg2       : std_logic_vector(31 downto 0);
+  signal b_norm_to_stg2       : std_logic_vector(31 downto 0);
+  signal shift_a_to_stg2      : unsigned(4 downto 0);
+  signal shift_b_to_stg2      : unsigned(4 downto 0);
+  signal div_by_zero_to_stg2  : std_logic;
+  signal div_overflow_to_stg2 : std_logic;
+
   
     -- output signals exe_stg2 to exe_stg3 --
 
@@ -219,6 +231,16 @@ architecture behaviour of pp_execute is
     signal W3_to_stg3 : std_logic_vector(83 downto 0);
     signal W4_to_stg3 : std_logic_vector(83 downto 0);
     signal Lpp_to_stg3 : std_logic_vector(67 downto 0);
+
+    -- Division
+    signal a_sign_to_stg3               : std_logic;
+    signal b_sign_to_stg3               : std_logic;
+    signal shift_a_to_stg3              : unsigned(4 downto 0);
+    signal shift_b_to_stg3              : unsigned(4 downto 0);
+    signal div_by_zero_to_stg3          : std_logic;
+    signal div_overflow_to_stg3         : std_logic;
+    signal q_pos_to_stg3, q_neg_to_stg3 : std_logic_vector(33 downto 0);
+    signal r_pos_to_stg3, r_neg_to_stg3 : std_logic_vector(33 downto 0);
   
     -- Instruction address:
     signal pc_to_stg3 : std_logic_vector(31 downto 0);
@@ -303,6 +325,17 @@ begin
       y_sign_out => y_sign_to_stg2,
       y_data_out => y_data_to_stg2,
       alu_y_out  => alu_y_to_stg2,
+
+      -- Divider outputs
+      a_sign_out => a_sign_to_stg2,
+      b_sign_out => b_sign_to_stg2,
+      a_norm_out => a_norm_to_stg2,
+      b_norm_out => b_norm_to_stg2,
+      shift_a_out => shift_a_to_stg2,
+      shift_b_out => shift_b_to_stg2,
+      div_by_zero_out => div_by_zero_to_stg2,
+      div_overflow_out => div_overflow_to_stg2,
+
 
       -- Register addresses:
       rd_addr_in  => rd_addr_in,
@@ -415,6 +448,16 @@ begin
     alu_op_in => alu_op_to_stg2,
     alu_y_in  => alu_y_to_stg2,
 
+    -- divider inputs
+    a_sign_in => a_sign_to_stg2,
+    b_sign_in => b_sign_to_stg2,
+    a_norm_in => a_norm_to_stg2,
+    b_norm_in => b_norm_to_stg2,
+    shift_a_in => shift_a_to_stg2,
+    shift_b_in => shift_b_to_stg2,
+    div_by_zero_in => div_by_zero_to_stg2,
+    div_overflow_in => div_overflow_to_stg2,
+
     -- Control signals:
     rd_write_in => rd_write_to_stg2,
     branch_in   => branch_to_stg2,
@@ -453,6 +496,20 @@ begin
     W3_out => W3_to_stg3,
     W4_out => W4_to_stg3,
     Lpp_out => Lpp_to_stg3,
+
+    -- Division
+    a_sign_out => a_sign_to_stg3,
+    b_sign_out => b_sign_to_stg3,
+    shift_a_out => shift_a_to_stg3,
+    shift_b_out => shift_b_to_stg3,
+    div_by_zero_out => div_by_zero_to_stg3,
+    div_overflow_out => div_overflow_to_stg3,
+    q_pos_out => q_pos_to_stg3,
+    q_neg_out => q_neg_to_stg3,
+    r_pos_out => r_pos_to_stg3,
+    r_neg_out => r_neg_to_stg3,
+    stall_srt_div => stall_srt_div,
+
     -- Instruction address:
     pc_out => pc_to_stg3,
 
@@ -521,6 +578,18 @@ begin
 
     -- csd alu inputs
     alu_op_in => alu_op_to_stg3,
+
+    -- Division
+    a_sign_in => a_sign_to_stg3,
+    b_sign_in => b_sign_to_stg3,
+    shift_a_in => shift_a_to_stg3,
+    shift_b_in => shift_b_to_stg3,
+    div_by_zero_in => div_by_zero_to_stg3,
+    div_overflow_in => div_overflow_to_stg3,
+    q_pos_in => q_pos_to_stg3,
+    q_neg_in => q_neg_to_stg3,
+    r_pos_in => r_pos_to_stg3,
+    r_neg_in => r_neg_to_stg3,
 
     -- Control signals:
     rd_write_in => rd_write_to_stg3,

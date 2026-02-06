@@ -108,7 +108,17 @@ entity fp_exe_stg1 is
     x_data_out : out std_logic_vector(32 downto 0);
     y_sign_out : out std_logic_vector(32 downto 0);
     y_data_out : out std_logic_vector(32 downto 0);
-    alu_y_out  : out std_logic_vector(31 downto 0)
+    alu_y_out  : out std_logic_vector(31 downto 0);
+
+    -- Divider
+    a_sign_out       : out std_logic;
+    b_sign_out       : out std_logic;
+    a_norm_out       : out std_logic_vector(31 downto 0);
+    b_norm_out       : out std_logic_vector(31 downto 0);
+    shift_a_out      : out unsigned(4 downto 0);
+    shift_b_out      : out unsigned(4 downto 0);
+    div_by_zero_out  : out std_logic;
+    div_overflow_out : out std_logic
   );
 end entity fp_exe_stg1;
 
@@ -152,6 +162,8 @@ architecture behaviour of fp_exe_stg1 is
 
   signal irq_asserted     : std_logic;
   signal irq_asserted_num : std_logic_vector(3 downto 0);
+
+  signal div_is_signed : std_logic;
   
   --signal load_hazard_detected, csr_hazard_detected : std_logic;
 begin
@@ -418,5 +430,19 @@ begin
         end if;
      end process;
 
+  div_is_signed <= '1' when alu_op = ALU_DIV else '0';
+  divider_stg1: entity work.divider_stg1
+    port map (
+      a => alu_x,
+      b => alu_y,
+      is_signed => div_is_signed,
+      a_sign => a_sign_out,
+      b_sign => b_sign_out,
+      a_norm => a_norm_out,
+      b_norm => b_norm_out,
+      shift_a => shift_a_out,
+      shift_b => shift_b_out,
+      div_by_zero => div_by_zero_out,
+      div_overflow => div_overflow_out
+    );
 end architecture behaviour;
-

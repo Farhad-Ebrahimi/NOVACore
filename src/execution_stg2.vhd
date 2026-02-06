@@ -54,6 +54,28 @@ entity fp_exe_stg2 is
     alu_op_out : out alu_operation;
     alu_y_in  : in std_logic_vector(31 downto 0);
 
+    -- Divider inputs
+    a_sign_in        : in std_logic;
+    b_sign_in        : in std_logic;
+    a_norm_in        : in std_logic_vector(31 downto 0);
+    b_norm_in        : in std_logic_vector(31 downto 0);
+    shift_a_in       : in unsigned(4 downto 0);
+    shift_b_in       : in unsigned(4 downto 0);
+    div_by_zero_in   : in std_logic;
+    div_overflow_in  : in std_logic;
+
+    -- Divider outputs
+    a_sign_out           : out std_logic;
+    b_sign_out           : out std_logic;
+    shift_a_out          : out unsigned(4 downto 0);
+    shift_b_out          : out unsigned(4 downto 0);
+    div_by_zero_out      : out std_logic;
+    div_overflow_out     : out std_logic;
+    q_pos_out, q_neg_out : out std_logic_vector(33 downto 0);
+    r_pos_out, r_neg_out : out std_logic_vector(33 downto 0);
+
+    stall_srt_div : out std_logic;
+
     -- Control signals:
     rd_write_in : in std_logic;
     branch_in   : in branch_type;
@@ -153,6 +175,32 @@ architecture behaviour of fp_exe_stg2 is
   signal y_sign : std_logic_vector(32 downto 0);
   signal y_data : std_logic_vector(32 downto 0);
 
+  -- SRT division
+  signal srt_div_running : std_logic;
+
+  signal a_sign        : std_logic;
+  signal b_sign        : std_logic;
+  signal a_norm        : std_logic_vector(31 downto 0);
+  signal b_norm        : std_logic_vector(31 downto 0);
+  signal shift_a       : unsigned(4 downto 0);
+  signal shift_b       : unsigned(4 downto 0);
+  signal div_by_zero   : std_logic;
+  signal div_overflow  : std_logic;
+
+  signal a_pos_in, a_neg_in : std_logic_vector(33 downto 0);
+  signal b_pos_in, b_neg_in : std_logic_vector(33 downto 0);
+  signal q_pos_in, q_neg_in : std_logic_vector(33 downto 0);
+
+  signal a_pos, a_neg : std_logic_vector(33 downto 0);
+  signal b_pos, b_neg : std_logic_vector(33 downto 0);
+  signal q_pos, q_neg : std_logic_vector(33 downto 0);
+
+  signal counter_in  : std_logic_vector(5 downto 0);
+  signal counter_out : std_logic_vector(5 downto 0);
+
+  signal rd_addr_saved : register_address;
+  signal rd_data_saved : std_logic_vector(31 downto 0);
+
   -- signal Pst_result     : std_logic_vector(31 downto 0);
   -- signal Ngt_result     : std_logic_vector(31 downto 0);
   
@@ -195,8 +243,12 @@ begin
         mem_op                <= MEMOP_TYPE_NONE;
         count_instruction_out <= '0';
         exception<= '0';
-      elsif stall = '0' then
-      
+
+        counter_in <= "000000";
+        srt_div_running <= '0';
+        stall_srt_div <= '0';
+
+      elsif stall = '0' and srt_div_running = '0' then
         pc                    <= pc_in;
         count_instruction_out <= count_instruction_in;
         
@@ -214,6 +266,16 @@ begin
         y_sign <= y_sign_in;
         y_data <= y_data_in;
         alu_y   <= alu_y_in;
+
+        -- Divider inputs
+        a_sign <= a_sign_in;
+        b_sign <= b_sign_in;
+        a_norm <= a_norm_in;
+        b_norm <= b_norm_in;
+        shift_a <= shift_a_in;
+        shift_b <= shift_b_in;
+        div_by_zero <= div_by_zero_in;
+        div_overflow <= div_overflow_in;
         
         -- Control signals:
         branch   <= branch_in;
@@ -240,6 +302,37 @@ begin
         dmem_write_req <= dmem_write_req_in;
         dmem_read_req  <= dmem_read_req_in;
 
+        -- division logic
+        if (alu_op_in = ALU_DIV or alu_op_in = ALU_DIVU) then
+          srt_div_running <= '1';
+          stall_srt_div <= '1';
+          counter_in <= "000000";
+
+          rd_addr_saved <= rd_addr_in;
+          rd_data_saved <= rd_data_in;
+
+          a_pos_in <= "00" & a_norm_in;
+          a_neg_in <= (others => '0');
+          b_pos_in <= "00" & b_norm_in;
+          b_neg_in <= (others => '0');
+          q_pos_in <= (others => '0');
+          q_neg_in <= (others => '0');
+        end if;
+
+      elsif stall = '0' and srt_div_running = '1' then
+        counter_in <= counter_out;
+
+        a_pos_in <= a_pos;
+        a_neg_in <= a_neg;
+        b_pos_in <= b_pos;
+        b_neg_in <= b_neg;
+        q_pos_in <= q_pos;
+        q_neg_in <= q_neg;
+
+        if (counter_in = "011111") then
+          stall_srt_div <= '0';
+          srt_div_running <= '0';
+        end if;
       end if;
     end if;
   end process pipeline_register;
@@ -262,5 +355,32 @@ begin
       Lpp=>Lpp_out,
       operation => alu_op
     );
-    
+
+  divider: entity work.divider
+    port map (
+      a_pos => a_pos_in,
+      a_neg => a_neg_in,
+      b_pos => b_pos_in,
+      b_neg => b_neg_in,
+      q_pos => q_pos_in,
+      q_neg => q_neg_in,
+      a_pos_out => a_pos,
+      a_neg_out => a_neg,
+      b_pos_out => b_pos,
+      b_neg_out => b_neg,
+      q_pos_out => q_pos,
+      q_neg_out => q_neg,
+      counter_in => counter_in,
+      counter_out => counter_out
+    );
+
+  q_pos_out <= q_pos;
+  q_neg_out <= q_neg;
+
+  a_sign_out <= a_sign;
+  b_sign_out <= b_sign;
+  shift_a_out <= shift_a;
+  shift_b_out <= shift_b;
+  div_by_zero_out <= div_by_zero;
+  div_overflow_out <= div_overflow;
 end architecture behaviour;

@@ -56,6 +56,16 @@ entity fp_exe_stg3 is
     alu_op_in  : in alu_operation;
     alu_op_out : out alu_operation;
 
+    -- Division inputs
+    a_sign_in : std_logic;
+    b_sign_in : std_logic;
+    shift_a_in : unsigned(4 downto 0);
+    shift_b_in : unsigned(4 downto 0);
+    div_by_zero_in : std_logic;
+    div_overflow_in : std_logic;
+    q_pos_in, q_neg_in : std_logic_vector(33 downto 0);
+    r_pos_in, r_neg_in : std_logic_vector(33 downto 0);
+
     -- Control signals:
     rd_write_in : in std_logic;
     branch_in   : in branch_type;
@@ -151,6 +161,18 @@ architecture behaviour of fp_exe_stg3 is
   
   signal W1, W2, W3, W4 : std_logic_vector(83 downto 0);
   signal Lpp : std_logic_vector(67 downto 0);
+
+  signal a_sign : std_logic;
+  signal b_sign : std_logic;
+  signal shift_a : unsigned(4 downto 0);
+  signal shift_b : unsigned(4 downto 0);
+  signal div_by_zero : std_logic;
+  signal div_overflow : std_logic;
+  signal q_pos, q_neg : std_logic_vector(33 downto 0);
+  signal r_pos, r_neg : std_logic_vector(33 downto 0);
+
+  signal div_is_signed : std_logic;
+  signal q : std_logic_vector(31 downto 0);
   
 begin
 
@@ -211,7 +233,18 @@ begin
         Lpp<= Lpp_in;
         -- CSD ALU signals:
         alu_op   <= alu_op_in;
-      
+ 
+        -- Division signals
+        a_sign <= a_sign_in;
+        b_sign <= b_sign_in;
+        shift_a <= shift_a_in;
+        shift_b <= shift_b_in;
+        div_by_zero <= div_by_zero_in;
+        div_overflow <= div_overflow_in;
+        q_pos <= q_pos_in;
+        q_neg <= q_neg_in;
+        r_pos <= r_pos_in;
+        r_neg <= r_neg_in;
         
         -- Control signals:
         branch   <= branch_in;
@@ -252,11 +285,28 @@ begin
       Pos_mul=>Pos_mul,
       Neg_mul=>Neg_mul
       );
+
+  div_is_signed <= '1' when (alu_op = ALU_DIV) else '0';
+  divider_stg3: entity work.divider_stg3
+    port map (
+      is_signed => div_is_signed,
+      a_sign => a_sign,
+      b_sign => b_sign,
+      shift_a => shift_a,
+      shift_b => shift_b,
+      div_by_zero => div_by_zero,
+      div_overflow => div_overflow,
+      q_pos => q_pos,
+      q_neg => q_neg,
+      r_pos => r_pos,
+      r_neg => r_neg,
+      q => q
+    );
        
   csd_alu_result_AS <= std_logic_vector(unsigned(Pos_Add) + unsigned(Neg_Add) + 1);
   csd_alu_result_HL <= std_logic_vector(unsigned(Pos_mul) + unsigned(Neg_mul) + 1);
   
-    process (alu_op,csd_alu_result_HL,csd_alu_result_AS,bw_alu_result)
+    process (alu_op,csd_alu_result_HL,csd_alu_result_AS,bw_alu_result,q)
      begin
        case alu_op is
             when ALU_MUL =>
@@ -267,6 +317,8 @@ begin
                 alu_result <= csd_alu_result_AS;
             when ALU_SLT | ALU_SLTU | ALU_AND | ALU_OR | ALU_XOR | ALU_SLL | ALU_SRL |ALU_SRA =>
                 alu_result <= bw_alu_result;  
+            when ALU_DIV | ALU_DIVU =>
+                alu_result <= q;
             when others =>
                 alu_result <= (others=>'0');  
         end case;

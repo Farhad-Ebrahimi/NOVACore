@@ -126,6 +126,11 @@ set files [list \
  [file normalize "${origin_dir}/../soc/pp_soc_reset.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_soc_timer.vhd"]\
  [file normalize "${origin_dir}/../soc/pp_soc_uart.vhd"]\
+ [file normalize "${origin_dir}/../src/divider.vhd"]\
+ [file normalize "${origin_dir}/../src/divider_stg1.vhd"]\
+ [file normalize "${origin_dir}/../src/divider_stg3.vhd"]\
+ [file normalize "${origin_dir}/../src/normalizer.vhd"]\
+ [file normalize "${origin_dir}/../src/ternary_adder.vhd"]\
 ]
 add_files -fileset sources_1 $files
 

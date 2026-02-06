@@ -3,6 +3,7 @@
 // Report bugs and issues on <https://github.com/skordal/potato/issues>
 
 #include <stdint.h>
+#include <limits.h>
 
 #include "platform.h"
 #include "uart.h"
@@ -21,29 +22,16 @@ void exception_handler(uint32_t cause, void * epc, void * regbase)
 
 int main(void)
 {
-	uart_initialize(&uart0, (volatile void *) PLATFORM_UART0_BASE);
-	uart_set_divisor(&uart0, uart_baud2divisor(115200, PLATFORM_SYSCLK_FREQ));
-
-	/* Print welcome message */
-	uart_tx_string(&uart0, "\n\r***************** NOVACore Bootloader - waiting for application image *****************\n\r");
-	uart_tx_string(&uart0, "\n\r** Usage: cat image.bin /dev/zero | head -c128k | pv -s 128k -L 14400 > /dev/ttyUSB1 **\n\r");
-
-	/* Read application from UART and store it in RAM */
-	for(int i = 0; i < APP_LEN; i++){
-		while(uart_rx_fifo_empty(&uart0));
-		*((volatile uint8_t*)(APP_START + i)) = uart_rx(&uart0);
-
-		/* Print some dots */
-		if(((i & 0x7ff) == 0) && !uart_tx_fifo_full(&uart0))
-			uart_tx(&uart0, '.');
-	}
-
-	/* Print booting message */
-	uart_tx_string(&uart0, "\n\rBooting ... \n\r");
-
-	/* Jump in RAM */
-	goto *APP_ENTRY;
+	__asm__ (
+		"li	t0, 200\n\t"
+		"li	t1, 30\n\t"
+		"div	t3, t0, t1\n\t"
+		"addi	t4, t3, 1\n\t"
+		"li	t0, 100\n\t"
+		"li	t1, 10\n\t"
+		"div	t3, t0, t1\n\t"
+		"addi	t4, t3, 1\n\t"
+	);
 
 	return 0;
 }
-
