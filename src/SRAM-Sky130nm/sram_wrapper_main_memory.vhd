@@ -19,7 +19,7 @@ entity main_memory_wrapper is
         csb : in std_logic;
         web : in std_logic;
         wmask : in std_logic_vector(NUM_WMASKS - 1 downto 0);
-        addr : in std_logic_vector(12 downto 0);
+        addr : in std_logic_vector(ADDR_WIDTH - 1 downto 0);
         din : in std_logic_vector(DATA_WIDTH - 1 downto 0);
         dout : out std_logic_vector(DATA_WIDTH - 1 downto 0)
     );
@@ -27,29 +27,19 @@ end entity main_memory_wrapper;
 
 architecture rtl of main_memory_wrapper is
 
-    signal bank_select : std_logic_vector(1 downto 0);
+    signal web_n : std_logic;
+    signal csb_n : std_logic;
 
-    signal web_intermediate : std_logic;
-    signal csb0_intermediate : std_logic;
-    signal csb1_intermediate : std_logic;
-    signal csb2_intermediate : std_logic;
-    signal csb3_intermediate : std_logic;
-
-    signal sram_addr : std_logic_vector(ADDR_WIDTH - 1 downto 0);
-    signal data_mask : std_logic_vector(DATA_WIDTH-1 downto 0);
-    signal dout_reg  : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram0 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram1 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram2 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram3 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-
-    signal dout_sram_bank0 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram_bank1 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram_bank2 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-    signal dout_sram_bank3 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
-
+    signal sram_addr : std_logic_vector(ADDR_WIDTH - 3 downto 0);
+    signal data_mask : std_logic_vector(DATA_WIDTH - 1 downto 0);
+    
+    signal dout_port0 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
+    signal dout_port1 : std_logic_vector(DATA_WIDTH - 1 downto 0) := (others => '0');
     
     component sky130_sram_2kbyte_1rw1r_32x512_8 is
+        generic (
+        ADDR_WIDTH : integer := 9
+        );
         port (
             clk0 : in std_logic;
             csb0 : in std_logic;
@@ -67,84 +57,33 @@ architecture rtl of main_memory_wrapper is
 
 begin
 
-    bank_select <= addr(12 downto 11);
-    sram_addr <= addr(10 downto 2);
-
-    web_intermediate <= not web;
-
-    csb0_intermediate <= '0' when (csb = '1' and (bank_select = "00")) else '1';
-    csb1_intermediate <= '0' when (csb = '1' and (bank_select = "01")) else '1';
-    csb2_intermediate <= '0' when (csb = '1' and (bank_select = "10")) else '1';
-    csb3_intermediate <= '0' when (csb = '1' and (bank_select = "11")) else '1';
+    web_n <= not web;
+    csb_n <= not csb;
+    
+    sram_addr <= addr(ADDR_WIDTH - 1 downto 2);
     
     gen_byte_mask : for i in 0 to 3 generate
         data_mask(8 * (i + 1) - 1 downto 8 * i) <= (others => wmask(i));
     end generate;
 
-    dout <= (dout_sram_bank0 and data_mask) when csb0_intermediate = '0' else
-            (dout_sram_bank1 and data_mask) when csb1_intermediate = '0' else
-            (dout_sram_bank2 and data_mask) when csb2_intermediate = '0' else
-            (dout_sram_bank3 and data_mask) when csb3_intermediate = '0' else
-            (others=> '0');
+    dout <= (dout_port0 and data_mask) when csb_n = '0' else (others=> '0');
         
-    Bank_0 : sky130_sram_2kbyte_1rw1r_32x512_8
+    memory_inst : sky130_sram_2kbyte_1rw1r_32x512_8
+    generic map (
+        ADDR_WIDTH => ADDR_WIDTH - 2
+    )
     port map(
         clk0 => clk,
-        csb0 => csb0_intermediate,
-        web0 => web_intermediate,
+        csb0 => csb_n,
+        web0 => web_n,
         wmask0 => wmask,
         addr0 => sram_addr,
         din0 => din,
-        dout0 => dout_sram_bank0,
+        dout0 => dout_port0,
         clk1 => '1',
         csb1 => '1',
         addr1 => (others => '0'),
-        dout1 => dout_sram0
+        dout1 => dout_port1
     );
-
-    Bank_1 : sky130_sram_2kbyte_1rw1r_32x512_8
-    port map(
-        clk0 => clk,
-        csb0 => csb1_intermediate,
-        web0 => web_intermediate,
-        wmask0 => wmask,
-        addr0 => sram_addr,
-        din0 => din,
-        dout0 => dout_sram_bank1,
-        clk1 => '1',
-        csb1 => '1',
-        addr1 => (others => '0'),
-        dout1 => dout_sram1
-    );
-
-    Bank_2 : sky130_sram_2kbyte_1rw1r_32x512_8
-    port map(
-        clk0 => clk,
-        csb0 => csb2_intermediate,
-        web0 => web_intermediate,
-        wmask0 => wmask,
-        addr0 => sram_addr,
-        din0 => din,
-        dout0 => dout_sram_bank2,
-        clk1 => '1',
-        csb1 => '1',
-        addr1 => (others => '0'),
-        dout1 => dout_sram2
-    );
-
-    Bank_3 : sky130_sram_2kbyte_1rw1r_32x512_8
-    port map(
-        clk0 => clk,
-        csb0 => csb3_intermediate,
-        web0 => web_intermediate,
-        wmask0 => wmask,
-        addr0 => sram_addr,
-        din0 => din,
-        dout0 => dout_sram_bank3,
-        clk1 => '1',
-        csb1 => '1',
-        addr1 => (others => '0'),
-        dout1 => dout_sram3
-    );
-
+    
 end architecture rtl;

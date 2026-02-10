@@ -126,6 +126,9 @@ begin
 --  aee_ram_cyc_in <= mem_select(2);
 
   main_memory_inst : entity work.main_memory_wrapper
+   generic map (
+        ADDR_WIDTH => 13
+    )
     port map(
       clk => clk,
       rst => reset,

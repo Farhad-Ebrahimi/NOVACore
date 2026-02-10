@@ -76,7 +76,7 @@ module sky130_sram_2kbyte_1rw1r_32x512_8(
     if ( !csb1_reg && VERBOSE ) 
       $display($time," Reading %m addr1=%b dout1=%b",addr1_reg,mem[addr1_reg]);
   end
-
+(* ram_style = "block" *)
 reg [DATA_WIDTH-1:0]    mem [0:RAM_DEPTH-1];
 
   // Memory Write Block Port 0
