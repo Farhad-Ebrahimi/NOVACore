@@ -54,7 +54,7 @@ architecture rtl of nv_memsys is
 --  signal aee_ram_wr_ack : std_logic;
 
   -- Main memory signals
-  signal main_memory_adr_in : std_logic_vector(12 downto 0);
+  signal main_memory_adr_in : std_logic_vector(18 downto 0);
   signal main_memory_dat_in : std_logic_vector(31 downto 0);
   signal main_memory_dat_out : std_logic_vector(31 downto 0);
   signal main_memory_cyc_in : std_logic;
@@ -127,7 +127,7 @@ begin
 
   main_memory_inst : entity work.main_memory_wrapper
    generic map (
-        ADDR_WIDTH => 13
+        ADDR_WIDTH => 19   -- 512KB addressable space
     )
     port map(
       clk => clk,

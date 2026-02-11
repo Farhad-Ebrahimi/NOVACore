@@ -13,7 +13,7 @@
 #include "platform.h"
 #include "uart.h"
 
-#define APP_LEN   (0x02000) 
+#define APP_LEN   (0x80000) 
 #define APP_ADDR  (0x00000000) 
 #define FSBL_ADDR  (0xffff8000) 
 
@@ -54,7 +54,7 @@ void receive_binary(volatile uint8_t *dest, uint32_t length)
         // Print percentage only if it has increased by at least 10%
         if (percent >= last_percent + 10)
         {
-            uart_tx_string(&uart0, "====%");
+            uart_tx_string(&uart0, "-->%");
             last_percent = percent;
             char buffer[8];
             int2string(percent, buffer);
@@ -62,7 +62,7 @@ void receive_binary(volatile uint8_t *dest, uint32_t length)
         }
     }
 
-    uart_tx_string(&uart0, "===>100% Transfer completed.\n\n\r");
+    uart_tx_string(&uart0, "-->%100 [Transfer completed]!\n\n\r");
 }
 
 int main(void)
