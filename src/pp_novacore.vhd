@@ -105,6 +105,7 @@ architecture behaviour of pp_novacore is
 	signal dmem_address_r : std_logic_vector(dmem_address'range);
 	signal imem_address_r : std_logic_vector(imem_address'range);
 	signal imem_req_r : std_logic := '0';
+	signal stall : std_logic := '0';
 
 	type state_type is (IDLE, ST_NVDMEM, ST_NVIMEM, ST_WBDMEM);
 	signal state : state_type := IDLE;
@@ -131,6 +132,7 @@ begin
 			dmem_write_req => dmem_write_req,
 			dmem_write_ack => dmem_write_ack,
 			test_context_out => test_context_out,
+			stall => stall,
 			irq => irq
 		);
 		

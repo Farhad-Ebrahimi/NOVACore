@@ -19,7 +19,7 @@ entity pp_memory is
 		-- Data memory inputs:
 		dmem_read_ack  : in std_logic;
 		dmem_write_ack : in std_logic;
-		dmem_data_in   : in std_logic_vector(31 downto 0);
+		dmem_data_in   : in std_logic_vector(31 downto 0);   ----- comes from pp_core. 
 
 		-- Current PC value:
 		pc : in std_logic_vector(31 downto 0);
@@ -31,6 +31,14 @@ entity pp_memory is
 		rd_data_out  : out std_logic_vector(31 downto 0);
 		rd_addr_in   : in  register_address;
 		rd_addr_out  : out register_address;
+
+		-- FP destination register signals: ----fpu 2026
+		frd_write_in  : in  std_logic;
+		frd_write_out : out std_logic;
+		frd_data_in   : in  std_logic_vector(31 downto 0);
+		frd_data_out  : out std_logic_vector(31 downto 0);
+		frd_addr_in   : in  register_address;
+		frd_addr_out  : out register_address;
 
 		-- Control signals:
 		branch         : in  branch_type;
@@ -63,6 +71,7 @@ architecture behaviour of pp_memory is
 	signal mem_size : memory_operation_size;
 
 	signal rd_data : std_logic_vector(31 downto 0);
+	signal frd_data : std_logic_vector(31 downto 0); --- fpu 2026
 begin
 
 	mem_op_out <= mem_op;
@@ -72,17 +81,21 @@ begin
 		if rising_edge(clk) then
 			if reset = '1' then
 				rd_write_out <= '0';
+				frd_write_out <= '0';  ----fpu 2026
 				csr_write_out <= CSR_WRITE_NONE;
 				count_instr_out <= '0';
 				mem_op <= MEMOP_TYPE_NONE;
 			elsif stall = '0' then
 				mem_size <= mem_size_in;
-				rd_data <= rd_data_in;
-				rd_addr_out <= rd_addr_in;
+				rd_data <= rd_data_in;	
+				rd_addr_out <= rd_addr_in;	
+				frd_data <= frd_data_in;
+				frd_addr_out <= frd_addr_in;  ---fpu 2026
 
 				if exception_in = '1' then
 					mem_op <= MEMOP_TYPE_NONE;
 					rd_write_out <= '0';
+					frd_write_out <= '0';
 					csr_write_out <= CSR_WRITE_REPLACE;
 					csr_addr_out <= CSR_MEPC;
 					csr_data_out <= pc;
@@ -90,6 +103,7 @@ begin
 				else
 					mem_op <= mem_op_in;
 					rd_write_out <= rd_write_in;
+					frd_write_out <= frd_write_in;
 					csr_write_out <= csr_write_in;
 					csr_addr_out <= csr_addr_in;
 					csr_data_out <= csr_data_in;
@@ -150,5 +164,32 @@ begin
 			rd_data_out <= rd_data;
 		end if;
 	end process rd_data_mux;
+
+	-- FP Data Path (SIMPLIFIED 2026): ----fpu 2026
+	-- FLW is ALWAYS a word load (no sub-word FP loads exist in RISC-V)
+	-- Pass memory data directly to FP writeback
+	---frd_data_out <= dmem_data_in when (mem_op = MEMOP_TYPE_LOAD_FP )   -----or mem_op = MEMOP_TYPE_LOAD_UNSIGNED
+	                ---else frd_data;
+
+
+
+
+
+	frd_data_mux: process(frd_data, dmem_data_in, mem_op, mem_size)
+	begin
+		if mem_op = MEMOP_TYPE_LOAD_FP  then     -----or mem_op = MEMOP_TYPE_LOAD_UNSIGNED
+			if  mem_size = MEMOP_SIZE_WORD then
+				 frd_data_out <= dmem_data_in ;
+			end if;
+		else
+			frd_data_out <= frd_data;
+
+		end if;
+	end process frd_data_mux;
+
+
+
+
+   
 
 end architecture behaviour;

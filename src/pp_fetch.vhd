@@ -18,13 +18,14 @@ entity pp_fetch is
 		reset : in STD_LOGIC;
 
 		-- Instruction memory connections:
-		imem_address : out STD_LOGIC_VECTOR(31 downto 0);
-		imem_data_in : in STD_LOGIC_VECTOR(31 downto 0);
+		imem_address : out STD_LOGIC_VECTOR(31 downto 0);   -----where to read from i.e pc
+		imem_data_in : in STD_LOGIC_VECTOR(31 downto 0);    ----- the value to read
 		imem_req : out STD_LOGIC;
 		imem_ack : in STD_LOGIC;
 
 		-- Control inputs:
 		stall : in STD_LOGIC;
+		stall_fpu : in STD_LOGIC;   -----internals stall or div stall for fpus 
 		flush : in STD_LOGIC;
 		branch : in STD_LOGIC;
 		jump_inst_id : in STD_LOGIC;
@@ -39,7 +40,7 @@ entity pp_fetch is
 		-- Outputs to the instruction decode unit:
 		do_flush : out STD_LOGIC;
 		instruction_data : out STD_LOGIC_VECTOR(31 downto 0);
-		instruction_address : out STD_LOGIC_VECTOR(31 downto 0);
+		instruction_address : out STD_LOGIC_VECTOR(31 downto 0);  -----if_pc
 		instruction_ready : out STD_LOGIC
 	);
 end entity pp_fetch;
@@ -51,27 +52,32 @@ architecture behaviour of pp_fetch is
 	signal cancel_fetch : STD_LOGIC;
 	signal wrong_prediction : STD_LOGIC;
 	signal predicted_target : STD_LOGIC_VECTOR(31 downto 0);
+	signal stall_fetch : STD_LOGIC;    -----2026-01-21
+
 begin
 
 	imem_address <= pc_next when cancel_fetch = '0' else pc;
 
-	do_flush <= wrong_prediction;
+	do_flush <= branch;
+
+	-------------!internal_stall && !div_stall && !terminated_next in fetch 
+	stall_fetch <= stall_fpu and cancel_fetch;   -----2026-01-21
 	
-	instruction_data <= imem_data_in when ( stall = '0' and imem_ack='1' ) else imem_data;
-	instruction_ready <= imem_ack and (not stall) and (not cancel_fetch);
+	------stall_fpu condition added
+	instruction_data <= imem_data_in ; ---- when  ---( stall = '0' and imem_ack='1' and stall_fetch = '0') else imem_data;
+	instruction_ready <= imem_ack and (not stall) and (not cancel_fetch) and (not stall_fpu);
 	instruction_address <= pc;
 
 	imem_req <= not reset;
 
-	set_pc : process (clk)
+	set_pc: process(clk)
 	begin
 		if rising_edge(clk) then
 			if reset = '1' then
 				pc <= RESET_ADDRESS;
 				cancel_fetch <= '0';
-				imem_data <= (others=>'0');
 			else
-				if (exception = '1' or wrong_prediction = '1') and imem_ack = '0' then
+				if (exception = '1' or branch = '1') and imem_ack = '0' then
 					cancel_fetch <= '1';
 					pc <= pc_next;
 				elsif cancel_fetch = '1' and imem_ack = '1' then
@@ -79,46 +85,24 @@ begin
 				else
 					pc <= pc_next;
 				end if;
-				if stall = '0' and imem_ack = '1' then
-				    imem_data <= imem_data_in;
-				end if;
 			end if;
 		end if;
 	end process set_pc;
 
-	calc_next_pc : process (reset, stall, exception, imem_ack, evec, pc, cancel_fetch, wrong_prediction, predicted_target)
+	calc_next_pc: process(reset, stall, branch, exception, imem_ack, branch_target, evec, pc, cancel_fetch, stall_fpu)
 	begin
 		if exception = '1' then
 			pc_next <= evec;
-		elsif wrong_prediction = '1' then
-			pc_next <= predicted_target;
-		elsif imem_ack = '1' and stall = '0' and cancel_fetch = '0' then
-			pc_next <= predicted_target;
+		elsif branch = '1' then
+			pc_next <= branch_target;
+		elsif imem_ack = '1' and (stall = '0' or stall_fpu = '0') and cancel_fetch = '0'  then
+			pc_next <= std_logic_vector(unsigned(pc) + 4);
 		else
 			pc_next <= pc;
 		end if;
 	end process calc_next_pc;
 
-	Branch_prediction_unit : entity work.bpu
-		generic map
-		(
-			INDEX_WIDTH => 9,
-			RESET_ADDRESS => RESET_ADDRESS
-		)
-		port map
-		(
-			clk => clk,
-			reset => reset,
-			stall => stall,
-			jump_inst_id => jump_inst_id,
-			jump_inst_ie => jump_inst_ie,
-			actual_taken => branch,
-			actual_target => branch_target,
-			pc_if => pc,
-			pc_id => pcid_bpu,
-			pc_ie => pcie_bpu,
-			do_flush => wrong_prediction,
-			trg_addr_o => predicted_target
-		);
 
+	----from here we get the program counter and instruction will now pass into decode stage----
+	
 end architecture behaviour;

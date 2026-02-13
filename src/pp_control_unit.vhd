@@ -28,6 +28,8 @@ entity pp_control_unit is
 		rd_write            : out std_logic;   --! Signals that the instruction writes to a destination register.
 		branch              : out branch_type; --! Signals that the instruction is a branch.
 
+		frd_write : out std_logic;  --! Signals that the instruction writes to a destination floating-point register.
+
 		-- Exception signals:
 		decode_exception       : out std_logic;           --! Signals an instruction decode exception.
 		decode_exception_cause : out csr_exception_cause; --! Specifies the cause of a decode exception.
@@ -78,6 +80,10 @@ begin
 	--! @brief Decodes instructions.
 	decode_ctrl: process(opcode, funct3, funct12)
 	begin
+		-- Initialize both write signals to '0' (mutually exclusive) ----fpu 2026
+		--rd_write <= '0';      -- Default: no integer register write
+		frd_write <= '0';     -- Default: no FP register write
+		
 		case opcode is
 			when b"01101" => -- Load upper immediate
 				rd_write <= '1';
@@ -129,14 +135,31 @@ begin
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+			when b"10100" => -- Opcode 0x53 (Floating-point) ------dec-2025
+    			frd_write <= '1';
+    			exception <= '0';
+    			exception_cause <= CSR_CAUSE_NONE;  ----fpu 2025
+    			branch <= BRANCH_NONE;
+			when b"00001" => -- Floating-point load (FLW)
+				frd_write <= '1';
+				exception <= '0';
+				exception_cause <= CSR_CAUSE_NONE;
+				branch <= BRANCH_NONE;
+			when b"01001" => -- Floating-point store (FSW)
+				frd_write <= '0';
+				exception <= '0';
+				exception_cause <= CSR_CAUSE_NONE;
+				branch <= BRANCH_NONE;
 			when b"00011" => -- Fence instructions, ignored
 				rd_write <= '0';
+				frd_write <= '0';  --! FPU
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
 			when b"11100" => -- System instructions
 				if funct3 = b"000" then
 					rd_write <= '0';
+					frd_write <= '0';  --! FPU
 
 					if funct12 = x"000" then
 						exception <= '1';
@@ -227,6 +250,24 @@ begin
 						mem_size <= MEMOP_SIZE_HALFWORD;
 					when b"010" =>
 						mem_op <= MEMOP_TYPE_STORE;
+						mem_size <= MEMOP_SIZE_WORD;
+					when others =>
+						mem_op <= MEMOP_TYPE_INVALID;
+						mem_size <= MEMOP_SIZE_WORD;
+				end case;
+			when b"00001" => -- Floating-point load (FLW)
+				case funct3 is
+					when b"010" =>
+						mem_op <= MEMOP_TYPE_LOAD_FP;
+						mem_size <= MEMOP_SIZE_WORD;
+					when others =>
+						mem_op <= MEMOP_TYPE_INVALID;
+						mem_size <= MEMOP_SIZE_WORD;
+				end case;
+			when b"01001" => -- Floating-point store (FSW)
+				case funct3 is
+					when b"010" =>
+						mem_op <= MEMOP_TYPE_STORE_FP;
 						mem_size <= MEMOP_SIZE_WORD;
 					when others =>
 						mem_op <= MEMOP_TYPE_INVALID;

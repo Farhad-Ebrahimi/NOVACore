@@ -25,7 +25,8 @@ package pp_types is
 		ALU_SLT, ALU_SLTU,
 		ALU_ADD, ALU_SUB,
 		ALU_SRL, ALU_SLL, ALU_SRA,
-		ALU_NOP, ALU_INVALID, ALU_MUL, ALU_MULH, ALU_MULHSU, ALU_MULHU
+		ALU_NOP, ALU_INVALID, ALU_MUL, ALU_MULH, ALU_MULHSU, ALU_MULHU,
+		ALU_FADD, ALU_FSUB, ALU_FMUL, ALU_FDIV,ALU_FLW,ALU_FSW ,ALU_FMVXW,ALU_Comp,ALU_FCVT_WU    ----fpu 2025
 	);
 	--! Types of branches.
 	type branch_type is (
@@ -39,7 +40,7 @@ package pp_types is
 
 	--! Type of memory operation:
 	type memory_operation_type is (
-			MEMOP_TYPE_NONE, MEMOP_TYPE_INVALID, MEMOP_TYPE_LOAD, MEMOP_TYPE_LOAD_UNSIGNED, MEMOP_TYPE_STORE
+			MEMOP_TYPE_NONE, MEMOP_TYPE_INVALID, MEMOP_TYPE_LOAD, MEMOP_TYPE_LOAD_UNSIGNED, MEMOP_TYPE_STORE,MEMOP_TYPE_LOAD_FP,MEMOP_TYPE_STORE_FP
 		);
 
 	-- Determines if a memory operation is a load:
@@ -87,7 +88,7 @@ package body pp_types is
 
 	function memop_is_load(input : in memory_operation_type) return boolean is
 	begin
-		return (input = MEMOP_TYPE_LOAD or input = MEMOP_TYPE_LOAD_UNSIGNED);
+		return (input = MEMOP_TYPE_LOAD or input = MEMOP_TYPE_LOAD_UNSIGNED or input = MEMOP_TYPE_LOAD_FP);
 	end function memop_is_load;
 
 	function test_context_to_std_logic(input : in test_context) return std_logic_vector is

@@ -152,6 +152,48 @@ begin
 				alu_x_src <= ALU_SRC_CSR;
 				alu_y_src <= ALU_SRC_NULL;
 				alu_op <= ALU_ADD;
+			when b"10100" => -- Floating-point operations (opcode 0x53) ----fpu 2025
+				alu_x_src <= ALU_SRC_REG;
+				alu_y_src <= ALU_SRC_REG;
+				
+				case funct7 is  ----fpu 2025
+					when b"0000000" =>
+						alu_op <= ALU_FADD;  	----fpu 2025
+					when b"0000100" =>
+						alu_op <= ALU_FSUB;  	----fpu 2025
+					when b"0001000" =>
+						alu_op <= ALU_FMUL;  	----fpu 2025
+					when b"0001100" =>
+						alu_op <= ALU_FDIV;  	----fpu 2025
+					when b"1110000" =>
+					     alu_op <= ALU_FMVXW;  	----fpu 2025
+					when b"1010000" =>
+					     alu_op <= ALU_Comp;  	----fpu 2025
+					when b"1100000" =>
+					     alu_op <= ALU_FCVT_WU; ----fpu 2025
+					when others =>
+						alu_op <= ALU_INVALID;
+				end case;
+			when b"00001" => -- Floating-point load (FLW)
+				alu_x_src <= ALU_SRC_REG;
+				alu_y_src <= ALU_SRC_IMM;
+				
+				case funct3 is
+					when b"010" =>
+						alu_op <= ALU_ADD;  -- Address calculation: base + offset
+					when others =>
+						alu_op <= ALU_INVALID;
+				end case;
+			when b"01001" => -- Floating-point Store (FSW)
+				alu_x_src <= ALU_SRC_REG;
+				alu_y_src <= ALU_SRC_IMM;
+				
+				case funct3 is
+					when b"010" =>
+						alu_op <= ALU_ADD;  -- Address calculation: base + offset
+					when others =>
+						alu_op <= ALU_INVALID;
+				end case;
 			when others =>
 				alu_x_src <= ALU_SRC_REG;
 				alu_y_src <= ALU_SRC_REG;

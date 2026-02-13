@@ -13,6 +13,7 @@ entity pp_writeback is
 	port(
 		clk    : in std_logic;
 		reset  : in std_logic;
+		stall  : in std_logic;
 
 		-- Count instruction:
 		count_instr_in  : in std_logic;
@@ -38,13 +39,22 @@ entity pp_writeback is
 		rd_write_in  : in  std_logic;
 		rd_write_out : out std_logic;
 		rd_data_in   : in  std_logic_vector(31 downto 0);
-		rd_data_out  : out std_logic_vector(31 downto 0)
+		rd_data_out  : out std_logic_vector(31 downto 0);
+
+		-- FP destination register interface: ----fpu 2026
+		frd_addr_in   : in  register_address;
+		frd_addr_out  : out register_address;
+		frd_write_in  : in  std_logic;
+		frd_write_out : out std_logic;
+		frd_data_in   : in  std_logic_vector(31 downto 0);
+		frd_data_out  : out std_logic_vector(31 downto 0)
 	);
 end entity pp_writeback;
 
 architecture behaviour of pp_writeback is
 begin
 
+	-- Integer register pipeline (always latches, no stall gate)
 	pipeline_register: process(clk)
 	begin
 		if rising_edge(clk) then
@@ -67,5 +77,21 @@ begin
 			end if;
 		end if;
 	end process pipeline_register;
+
+	-- FP register pipeline (respects stall - only latch when stall='0') ----fpu 2026
+	fpu_pipeline: process(clk)
+	begin
+		if rising_edge(clk) then
+			if reset = '1' then
+				frd_write_out <= '0';
+				count_instr_out <= '0';
+			elsif stall = '0' then
+				--count_instr_out <= count_instr_in;
+				frd_data_out <= frd_data_in;
+				frd_write_out <= frd_write_in;
+				frd_addr_out <= frd_addr_in;
+			end if;
+		end if;
+	end process fpu_pipeline;
 
 end architecture behaviour;

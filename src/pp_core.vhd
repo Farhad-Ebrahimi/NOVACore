@@ -27,18 +27,18 @@ entity pp_core is
 	);
 	port (
 		-- Control inputs:
-		clk : in STD_LOGIC; --! Processor clock
-		reset : in STD_LOGIC; --! Reset signal
+		clk : in STD_LOGIC;     --! Processor clock
+		reset : in STD_LOGIC;    --! Reset signal
 
-		-- Instruction memory interface:
-		imem_address : out STD_LOGIC_VECTOR(31 downto 0); --! Address of the next instruction
+		-- Instruction memory interface:    -----equivalent to imem.mem maybe 
+		imem_address : out STD_LOGIC_VECTOR(31 downto 0); --! Address of the next instruction   imem.mem data 
 		imem_data_in : in STD_LOGIC_VECTOR(31 downto 0); --! Instruction input
 		imem_req : out STD_LOGIC;
 		imem_ack : in STD_LOGIC;
 
-		-- Data memory interface:
+		-- Data memory interface:  ------still have doubts what this does
 		dmem_address : out STD_LOGIC_VECTOR(31 downto 0); --! Data address
-		dmem_data_in : in STD_LOGIC_VECTOR(31 downto 0); --! Input from the data memory
+		dmem_data_in : in STD_LOGIC_VECTOR(31 downto 0); --! Input from the data memory   comes from upper modules
 		dmem_data_out : out STD_LOGIC_VECTOR(31 downto 0); --! Ouptut to the data memory
 		dmem_data_size : out STD_LOGIC_VECTOR(1 downto 0); --! Size of the data, 1 = 8 bits, 2 = 16 bits, 0 = 32 bits. 
 		dmem_read_req : out STD_LOGIC; --! Data memory read request
@@ -50,7 +50,11 @@ entity pp_core is
 		test_context_out : out test_context; --! Test context output.
 
 		-- External interrupt input:
-		irq : in STD_LOGIC_VECTOR(7 downto 0) --! IRQ inputs.
+		irq : in STD_LOGIC_VECTOR(7 downto 0); --! IRQ inputs.
+
+		----------------------------------------
+		stall : in STD_LOGIC --from fpu.sv
+		
 	);
 end entity pp_core;
 
@@ -60,9 +64,12 @@ architecture behaviour of pp_core is
 	signal flush_if, flush_id, flush_ex : STD_LOGIC;
 
 	------- Stall signals -------
-	signal stall_if, stall_id, stall_ex, stall_mem : STD_LOGIC;
+	signal stall_if, stall_id, stall_ex, stall_mem, stall_freg : STD_LOGIC;   ----normal stall for if,id,ex and mem
+	signal stall_exe_stg1_combined, stall_exe_stg2_combined : STD_LOGIC;  -- Combined stall signals for Execute stages
+
+	-----signal stall_exe_stg1, stall_exe_stg2: STD_LOGIC;  -- Combined stall signals for Execute stages
 	
-	-- delibrate stall
+	-- delibrate stall    -----what is that?
 	signal stall_counter : integer range 0 to 1 := 0;
 	signal delibrate_stall, insert_nop_id : std_logic;
 
@@ -100,6 +107,11 @@ architecture behaviour of pp_core is
 	signal rs1_address, rs2_address : register_address;
 	signal rs1_data, rs2_data : STD_LOGIC_VECTOR(31 downto 0);
 
+	-- FP register file read ports:
+	signal frs1_data, frs2_data : STD_LOGIC_VECTOR(31 downto 0);
+	signal frs1_address_p, frs2_address_p : register_address;
+	signal frs1_address, frs2_address : register_address;
+	
 	-- Data memory signals:
 	signal dmem_address_p : STD_LOGIC_VECTOR(31 downto 0);
 	signal dmem_data_size_p : STD_LOGIC_VECTOR(1 downto 0);
@@ -114,14 +126,18 @@ architecture behaviour of pp_core is
 	-- Decode stage signals:
 	signal id_funct3 : STD_LOGIC_VECTOR(2 downto 0);
 	signal id_rd_address : register_address;
+	signal id_frd_address : register_address;   ---for fpu
 	signal id_rd_write : STD_LOGIC;
+	signal id_frd_write : STD_LOGIC;           ---for fpu
 	signal id_rs1_address : register_address;
 	signal id_rs2_address : register_address;
+	signal id_frs1_address : register_address;  -- FP register read address 1
+	signal id_frs2_address : register_address;  -- FP register read address 2
 	signal id_csr_address : csr_address;
 	signal id_csr_write : csr_write_mode;
 	signal id_csr_use_immediate : STD_LOGIC;
-	signal id_shamt : STD_LOGIC_VECTOR(4 downto 0);
-	signal id_immediate : STD_LOGIC_VECTOR(31 downto 0);
+	signal id_shamt : STD_LOGIC_VECTOR(4 downto 0);    ---only for integers
+	signal id_immediate : STD_LOGIC_VECTOR(31 downto 0);    ----only for integers
 	signal id_branch : branch_type;
 	signal id_alu_x_src, id_alu_y_src : alu_operand_source;
 	signal id_alu_op : alu_operation;
@@ -130,6 +146,7 @@ architecture behaviour of pp_core is
 	signal id_pc : STD_LOGIC_VECTOR(31 downto 0);
 	signal id_exception : STD_LOGIC;
 	signal id_exception_cause : csr_exception_cause;
+	signal id_funct7 : STD_LOGIC_VECTOR(6 downto 0);  ---added for 
 
 	-- Execute stage signals:
 	signal ex_dmem_address : STD_LOGIC_VECTOR(31 downto 0);
@@ -138,8 +155,12 @@ architecture behaviour of pp_core is
 	signal ex_dmem_read_req : STD_LOGIC;
 	signal ex_dmem_write_req : STD_LOGIC;
 	signal ex_rd_address : register_address;
+	signal ex_frd_address : register_address;                         ---- fpu 2026
 	signal ex_rd_data : STD_LOGIC_VECTOR(31 downto 0);
+	signal ex_frd_data : STD_LOGIC_VECTOR(31 downto 0);                ---- fpu 2026
+
 	signal ex_rd_write : STD_LOGIC;
+	signal ex_frd_write : STD_LOGIC;                                   ---- fpu 2026
 	signal ex_pc : STD_LOGIC_VECTOR(31 downto 0);
 	signal ex_csr_address : csr_address;
 	signal ex_csr_write : csr_write_mode;
@@ -154,6 +175,11 @@ architecture behaviour of pp_core is
 	signal mem_rd_write : STD_LOGIC;
 	signal mem_rd_address : register_address;
 	signal mem_rd_data : STD_LOGIC_VECTOR(31 downto 0);
+
+	signal mem_frd_write : STD_LOGIC;             ---- fpu 2026
+	signal mem_frd_data : STD_LOGIC_VECTOR(31 downto 0);  ---- fpu 2026 
+	signal mem_frd_address : register_address;    ---- fpu 2026
+
 	signal mem_csr_address : csr_address;
 	signal mem_csr_write : csr_write_mode;
 	signal mem_csr_data : STD_LOGIC_VECTOR(31 downto 0);
@@ -166,6 +192,12 @@ architecture behaviour of pp_core is
 	signal wb_rd_address : register_address;
 	signal wb_rd_data : STD_LOGIC_VECTOR(31 downto 0);
 	signal wb_rd_write : STD_LOGIC;
+    
+	signal wb_frd_address : register_address;   ---- fpu 2026
+	signal wb_frd_data : STD_LOGIC_VECTOR(31 downto 0);  ---- fpu 2026
+	signal wb_frd_write : STD_LOGIC;   ---- fpu 2026
+
+
 	signal wb_csr_address : csr_address;
 	signal wb_csr_write : csr_write_mode;
 	signal wb_csr_data : STD_LOGIC_VECTOR(31 downto 0);
@@ -176,14 +208,51 @@ architecture behaviour of pp_core is
 	signal dmem_read_ack_r  : std_logic;
     signal dmem_write_ack_r : std_logic;
     signal dmem_data_in_r :std_logic_vector(31 downto 0);
+
+	----------------------div stall signals 2026-------------------------
+
+		-- Division stall control
+	signal div_start          : std_logic;                          -- Start division computation
+	signal div_done           : std_logic;                          -- Division complete flag
+	signal div_busy           : std_logic;                          -- Division in progress
+	signal div_stall          : std_logic;                          -- Stall IF + Decode during pre-wait (counters 0-3)
+	signal div_exec_stall     : std_logic;                          -- Stall Execute when DIV in Execute (counter >= 4)
+	signal div_counter        : integer range 0 to 63;              -- Counter: 0-33 (34 cycles total)
+	signal div_detected       : std_logic;                          -- DIV opcode detected in Decode
+	signal div_op1_latched    : std_logic_vector(31 downto 0);      -- Captured dividend
+	signal div_op2_latched    : std_logic_vector(31 downto 0);      -- Captured divisor
+	signal div_rm_latched     : std_logic_vector(2 downto 0);       -- Captured rounding mode
+	signal div_rd_latched     : std_logic_vector(4 downto 0);       -- Captured destination register
+	-------------------------------------coming from decode stage-------------------------------------------------------
+	signal  decode_instruction_out : std_logic_vector(31 downto 0);  -- Current instruction in Decode
+	--signal  op1_out : std_logic_vector(31 downto 0);	
+	--signal  op2_out : std_logic_vector(31 downto 0);
+	--signal 	frd_out : std_logic_vector(4 downto 0);
+	signal  opcode : std_logic_vector(4 downto 0);	
+	signal  internal_stall : STD_LOGIC;	
+	signal  decode_valid_out : STD_LOGIC; 
+	signal stall_fpu : STD_LOGIC;
+	signal  ex_valid_out : STD_LOGIC;	
+     ----------------------enabling signals to choose which operation to perform. need to check this
+	signal en_fadd : std_logic;
+  	signal en_fsub : std_logic;
+  	signal en_fmul : std_logic;
+  	signal en_fdiv : std_logic;
+	
+	--------------------------------------------------------------------
     
 begin
 
 	stall_if <=  stall_id or delibrate_stall or insert_nop_id;
-	stall_id <= stall_ex;
-	stall_ex <= hazard_detected or stall_mem;
-	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and dmem_read_ack_r = '0')
-		or to_std_logic(mem_mem_op = MEMOP_TYPE_STORE and dmem_write_ack_r = '0');
+	stall_id <= stall_ex or internal_stall;   ---internal stall added. 
+	stall_ex <= hazard_detected or stall_mem or internal_stall; --- internal stall added.
+	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and (dmem_read_ack_r = '0'))
+		or to_std_logic(((mem_mem_op = MEMOP_TYPE_STORE) or (mem_mem_op = MEMOP_TYPE_STORE_FP)) and (dmem_write_ack_r = '0'));
+	
+	-- Combined stall signals for Execute stages (must include internal_stall for DIV)
+	stall_exe_stg1_combined <= stall_ex or internal_stall;
+	stall_exe_stg2_combined <= stall_mem or internal_stall;
+	stall_freg <= stall_exe_stg1_combined;
 		
     jump_inst_id <= '1' when (id_branch/=BRANCH_NONE) else '0';
 
@@ -191,6 +260,17 @@ begin
 	flush_id <= (bpu_wrong_prediction or exception_taken_if) and not stall_id;
 	flush_ex <= (bpu_wrong_prediction or exception_taken_if) and not stall_ex;
 
+
+	--------------------fpu stall----------------------
+	-- FPU.cpp:62:5  ----update_stall
+	internal_stall <= stall or div_exec_stall;  -- Full pipeline stall when DIV in Execute,MEM and WB
+	stall_fpu <= internal_stall and div_stall;   -- for if stage and decode stage	
+	-------------------------------------------------------------------
+   --------0x53 for fpus    ------rs1_data and rs2_data and  id_rd_address might not be needed 
+	--op1_out <= frs1_data when (opcode = "10100") else (others => '0') ;  -- FP reads if FP opcode
+	--op2_out <= frs2_data when (opcode = "10100") else (others => '0') ;  -- FP reads if FP opcode  
+	--frd_out  <= id_frd_address when (opcode = "10100") else (others => '0');  -- FP rd if FP opcode
+	
 	------- Control and status module -------
 	csr_unit : entity work.pp_csr_unit
 		generic map(
@@ -217,7 +297,7 @@ begin
 			software_interrupt_out => software_interrupt,
 			timer_interrupt_out => timer_interrupt
 		);
-
+---------------------------------need to check the stall for csr read address------------------------
 	csr_read_address <= id_csr_address when stall_ex = '0' else
 		csr_read_address_p;
 	store_previous_csr_addr : process (clk, stall_ex)
@@ -252,6 +332,34 @@ begin
 			rs2_address_p <= id_rs2_address;
 		end if;
 	end process store_previous_rsaddr;
+	
+	---------------------fpu register file instantiation 2026-------------------------
+      fpu_regfile : entity work.pp_fpu_register_file
+		port map(
+			clk => clk,
+			frs1_addr => frs1_address,
+			frs1_data => frs1_data,
+			frs2_addr => frs2_address,
+			frs2_data => frs2_data,
+			frd_addr => wb_frd_address,  ---- in signal 
+			frd_data => wb_frd_data,
+			frd_write => wb_frd_write
+		);
+
+	frs1_address <= id_frs1_address when stall_freg = '0' else
+		frs1_address_p;
+	frs2_address <= id_frs2_address when stall_freg = '0' else
+		frs2_address_p;
+
+
+
+	store_previous_frsaddr : process (clk, stall_freg)
+		begin
+		if rising_edge(clk) and stall_freg = '0' then
+			frs1_address_p <= id_frs1_address;
+			frs2_address_p <= id_frs2_address;
+		end if;
+	end process store_previous_frsaddr;
 
 	------- Instruction Fetch (IF) Stage -------
 	fetch : entity work.pp_fetch
@@ -264,8 +372,9 @@ begin
 			imem_data_in => imem_data_in,
 			imem_req => imem_req,
 			imem_ack => imem_ack,
-			stall => stall_if,
+			stall => stall_if,    
 			flush => flush_if,
+			stall_fpu => stall_fpu, --added 2026
 			branch => branch_taken,
 			jump_inst_id => jump_inst_id,
 			jump_inst_ie => jump_inst_ie,
@@ -280,6 +389,7 @@ begin
 			instruction_ready => if_instruction_ready
 		);
 	if_count_instruction <= if_instruction_ready;
+	
 
 	------- Instruction Decode (ID) Stage -------
 	decode : entity work.pp_decode
@@ -300,10 +410,20 @@ begin
 			rs1_addr => id_rs1_address,
 			rs2_addr => id_rs2_address,
 			rd_addr => id_rd_address,
+			opcode_out => opcode,  ----added
+			decode_valid_out => decode_valid_out, 
+			-----------------------------------------------
+			frs1_addr => id_frs1_address,  ----fpu
+			frs2_addr => id_frs2_address,   ---- fpu
+			frd_addr => id_frd_address,    -----fpu
+			instruction_out => decode_instruction_out,  --fpuS
+			div_detected_out => div_detected,   
+			-----------------------------------------------
 			csr_addr => id_csr_address,
 			shamt => id_shamt,
 			immediate => id_immediate,
 			rd_write => id_rd_write,
+			frd_write => id_frd_write,
 			branch => id_branch,
 			alu_x_src => id_alu_x_src,
 			alu_y_src => id_alu_y_src,
@@ -318,13 +438,21 @@ begin
 			decode_exception_cause => id_exception_cause
 		);
 
+
+-----------------------------------------------------------------------------
 	------- Execute (EX) Stage -------
 	execute : entity work.pp_execute
 		port map(
 			clk => clk,
 			reset => reset,
-			stall_exe_stg1 => stall_ex,
-			stall_exe_stg2 => stall_mem,
+			en_fadd => en_fadd,
+			en_fsub => en_fsub,
+  			en_fmul => en_fmul,
+  			en_fdiv => en_fdiv,
+
+			internal_stall => internal_stall,
+			stall_exe_stg1 => stall_exe_stg1_combined,
+			stall_exe_stg2 => stall_exe_stg2_combined,
 			flush => flush_ex,
 			irq => irq,
 			software_interrupt => software_interrupt,
@@ -334,12 +462,32 @@ begin
 			dmem_data_out => ex_dmem_data_out,
 			dmem_read_req => ex_dmem_read_req,
 			dmem_write_req => ex_dmem_write_req,
-			rs1_addr_in => rs1_address,
-			rs2_addr_in => rs2_address,
-			rd_addr_in => id_rd_address,
+			rs1_addr_in => rs1_address,  
+			rs2_addr_in => rs2_address,  
+			rd_addr_in => id_rd_address,     ----- from decode 
 			rd_addr_out => ex_rd_address,
-			rs1_data_in => rs1_data,
-			rs2_data_in => rs2_data,
+			rs1_data_in => rs1_data,    ----need to make for fpu
+			rs2_data_in => rs2_data,   ----need to make for fpu
+
+			--------------------------------------------
+            frs1_addr_in => frs1_address,   ----need to make for fpu
+			frs2_addr_in => frs2_address,  ----need to make for fpu
+			frd_addr_in => id_frd_address,  ----need to make for fpu
+			frd_addr_out => ex_frd_address,
+			frs1_data_in => frs1_data,    ----op1_out,    ----need to make for fpu     this is the value of div_operand1
+			frs2_data_in => frs2_data,   ----need to make for fpu       this is the value of div_operand2
+			div_start => div_start,
+			div_done => div_done,
+			div_busy_out => div_busy,
+			div_op1 => div_op1_latched,
+			div_op2 => div_op2_latched,
+			div_rm => div_rm_latched,
+			div_rd => div_rd_latched,
+			instruction_in => decode_instruction_out,   -----coming from decode stage
+			opcode_in => opcode,
+			valid_in => decode_valid_out,
+			
+	       ----------------------------------------------
 			shamt_in => id_shamt,
 			immediate_in => id_immediate,
 			funct3_in => id_funct3,
@@ -358,6 +506,9 @@ begin
 			rd_write_in => id_rd_write,
 			rd_write_out => ex_rd_write,
 			rd_data_out => ex_rd_data,
+			frd_write_in => id_frd_write,
+			frd_write_out => ex_frd_write,
+			frd_data_out => ex_frd_data,    ----- added for fpu
 			branch_in => id_branch,
 			branch_out => ex_branch,
 			mem_op_in => id_mem_op,
@@ -384,12 +535,22 @@ begin
 			mem_rd_write => mem_rd_write,
 			mem_rd_addr => mem_rd_address,
 			mem_rd_value => mem_rd_data,
+			mem_frd_value => mem_frd_data,   ------2026
 			mem_csr_addr => mem_csr_address,
 			mem_csr_write => mem_csr_write,
 			mem_exception => mem_exception,
+			mem_frd_addr => mem_frd_address,
 			wb_rd_write => wb_rd_write,
 			wb_rd_addr => wb_rd_address,
 			wb_rd_value => wb_rd_data,
+
+			wb_frd_write => wb_frd_write,
+			wb_frd_addr => wb_frd_address,
+			wb_frd_value => wb_frd_data,
+			mem_frd_write => mem_frd_write,
+			
+
+
 			wb_csr_addr => wb_csr_address,
 			wb_csr_write => wb_csr_write,
 			wb_exception => wb_exception,
@@ -397,6 +558,7 @@ begin
 			hazard_detected => hazard_detected
 		);
 
+------------------------need to check the stall condition ----------------
 	dmem_address <= ex_dmem_address when stall_mem = '0' else
 		dmem_address_p;
 	dmem_data_size <= ex_dmem_data_size when stall_mem = '0' else
@@ -424,7 +586,7 @@ begin
 		port map(
 			clk => clk,
 			reset => reset,
-			stall => stall_mem,
+			stall => stall_exe_stg2_combined ,
 			dmem_data_in => dmem_data_in_r,
 			dmem_read_ack => dmem_read_ack_r,
 			dmem_write_ack => dmem_write_ack_r,
@@ -435,6 +597,14 @@ begin
 			rd_data_out => mem_rd_data,
 			rd_addr_in => ex_rd_address,
 			rd_addr_out => mem_rd_address,
+			----------------------------------------
+			frd_write_in => ex_frd_write,
+			frd_data_in => ex_frd_data,
+			frd_addr_in => ex_frd_address,
+			frd_write_out => mem_frd_write,
+			frd_data_out => mem_frd_data,
+			frd_addr_out => mem_frd_address,
+			---------------------------------------------
 			branch => ex_branch,
 			mem_op_in => ex_mem_op,
 			mem_op_out => mem_mem_op,
@@ -458,6 +628,7 @@ begin
 		port map(
 			clk => clk,
 			reset => reset,
+			stall => internal_stall,  ---added fpu 2026
 			count_instr_in => mem_count_instruction,
 			count_instr_out => wb_count_instruction,
 			exception_ctx_in => mem_exception_context,
@@ -475,7 +646,14 @@ begin
 			rd_write_in => mem_rd_write,
 			rd_write_out => wb_rd_write,
 			rd_data_in => mem_rd_data,
-			rd_data_out => wb_rd_data
+			rd_data_out => wb_rd_data,
+			--------------------------------------------
+			frd_addr_in => mem_frd_address,
+			frd_addr_out => wb_frd_address,   -----from wb
+			frd_write_in => mem_frd_write,
+			frd_write_out => wb_frd_write,
+			frd_data_in => mem_frd_data,
+			frd_data_out => wb_frd_data
 		);
 		
 		
@@ -493,8 +671,8 @@ begin
                 
                 dmem_read_ack_r <= dmem_read_ack;
                 dmem_write_ack_r  <= dmem_write_ack;
-                dmem_data_in_r <= dmem_data_in;
-                if id_mem_op = MEMOP_TYPE_STORE and stall_counter = 0 then
+                dmem_data_in_r <= dmem_data_in;   -----comes from upper module and stored here.
+                if (id_mem_op = MEMOP_TYPE_STORE or id_mem_op = MEMOP_TYPE_STORE_FP) and stall_counter = 0 then
                     delibrate_stall <= '1';
                     stall_counter <= 1;
                 elsif stall_counter = 1 then
@@ -506,5 +684,91 @@ begin
             end if;
         end if;
     end process;
+
+-----if_instruction 
+		id_funct7 <= if_instruction(31 downto 25);  ----added for fpu to detect div instruction in decode stage. 
+--------------------------added for fpu operations--------------------------------------
+	---- DIV Detection (combinational)  only for fpus
+	--div_detected <= '1' when (id_funct7 = "0001100" and 
+	--                    		 decode_valid_out = '1' and 
+	--                           div_stall = '0' and 
+	--                           div_exec_stall = '0') else '0';
+
+-- Division Stall Control (sequential)
+DivStall: process(clk)
+begin
+    if rising_edge(clk) then
+        if (reset = '1') then
+            div_counter <= 0;
+            div_stall   <= '0';
+            div_start   <= '0';
+            div_exec_stall <= '0';
+            div_op1_latched <= (others => '0');
+            div_op2_latched <= (others => '0');
+            div_rm_latched  <= (others => '0');
+            div_rd_latched  <= (others => '0');
+        
+        elsif (div_counter = 0) then
+            -- IDLE state - check for new DIV
+            if (div_detected = '1') then
+                div_op1_latched <= frs1_data; ---- op1_out;
+                div_op2_latched <= frs2_data; ---op2_out;
+                div_rm_latched  <= decode_instruction_out(14 downto 12);
+                div_rd_latched  <= id_frd_address;   ---frd_out;
+                div_counter <= 1;
+                div_stall   <= '1';
+                div_start   <= '0';
+                div_exec_stall <= '0';
+            else 
+                div_stall <= '0';
+                div_start <= '0';
+                div_exec_stall <= '0';
+            end if;
+        
+        elsif (div_counter = 1) then
+            -- Pre-wait cycle 1: Freeze entire pipeline
+            
+            div_counter <= 2;
+            div_stall   <= '1';         -- Freeze front-end (IF + Decode)
+            div_start   <= '0';
+            div_exec_stall <= '1';      -- Freeze Execute too
+            
+        elsif (div_counter = 2) then
+            -- Pre-wait cycle 2: Keep entire pipeline frozen
+            div_counter <= 3;
+            div_stall   <= '1';
+            div_start   <= '0';
+            div_exec_stall <= '1';
+            
+        elsif (div_counter = 3) then
+            -- Transfer: DIV moves from Decode to Execute
+            
+            div_counter <= 4;
+            div_stall   <= '0';         -- Release front-end
+            div_start   <= '1';         -- Start divider
+            div_exec_stall <= '1';      -- Hold Execute for 30+ cycles
+            
+        elsif (div_counter >= 4) then
+            -- counter >= 4: Waiting for division to complete
+            if (div_done = '1') then
+                -- CRITICAL: IMMEDIATELY release stall when done
+                
+                div_counter <= 0;
+                div_stall   <= '0';
+                div_start   <= '0';
+                div_exec_stall <= '0';
+            else 
+                -- Still computing: maintain stall
+               -- if (div_counter = 4) then
+                    --report "[DIV_WAITING] div_counter=4 div_done=" & std_logic'image(div_done) & " at " & time'image(now);
+               -- end if;
+                div_counter <= div_counter + 1;
+                div_stall   <= '0';
+                div_start   <= '0';
+                div_exec_stall <= '1';
+            end if;
+        end if;
+    end if;
+end process DivStall;
 
 end architecture behaviour;

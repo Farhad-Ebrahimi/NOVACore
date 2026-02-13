@@ -30,23 +30,31 @@ entity pp_decode is
 		instruction_ready   : in std_logic;
 		instruction_count   : in std_logic;
 		insert_nop_id       : out std_logic;
+		div_detected_out : out std_logic;  --! Signal indicating that a DIV instruction has been detected and is not currently stalled.
 
 		-- Register addresses:
 		rs1_addr, rs2_addr, rd_addr : out register_address;
 		csr_addr : out csr_address;
+		frs1_addr,frs2_addr, frd_addr : out register_address;  --- for FPU
 
-		-- Shamt value for shift operations:
+		-- Shamt value for shift operations: not for floats
 		shamt  : out std_logic_vector(4 downto 0);
 		funct3 : out std_logic_vector(2 downto 0);
 
-		-- Immediate value for immediate instructions:
+		opcode_out : out std_logic_vector(4 downto 0);
+		decode_valid_out : out std_logic;  
+		instruction_out : out std_logic_vector(31 downto 0);  --added
+
+
+		-- Immediate value for immediate instructions: not for floats
 		immediate : out std_logic_vector(31 downto 0);
 
 		-- Control signals:
 		rd_write          : out std_logic;
+		frd_write         : out std_logic;  --! FPU register write signal
 		branch            : out branch_type;
-		alu_x_src         : out alu_operand_source;
-		alu_y_src         : out alu_operand_source;
+		alu_x_src         : out alu_operand_source;   ----need to check if needed for floats
+		alu_y_src         : out alu_operand_source;   ----need to check if needed for floats
 		alu_op            : out alu_operation;
 		mem_op            : out memory_operation_type;
 		mem_size          : out memory_operation_size;
@@ -70,14 +78,16 @@ architecture behaviour of pp_decode is
 	signal instruction     : std_logic_vector(31 downto 0);
 	signal immediate_value : std_logic_vector(31 downto 0);
 	signal rd_addr_reg : register_address;
-	signal insert_nop, nop_trigger, rd_write_reg : std_logic;
+	signal insert_nop, nop_trigger, rd_write_reg ,frd_write_reg : std_logic;
 	signal alu_op_reg : alu_operation;
+	signal frd_addr_reg : register_address;  ---for fpu
 	
 begin
 
 	immediate <= immediate_value;
 	alu_op <= alu_op_reg;
 	rd_write <= rd_write_reg;
+	frd_write <= frd_write_reg;  --- for FPU
 	
 	-- Instruction fetch and hold
 	get_instruction: process(clk)
@@ -89,7 +99,7 @@ begin
 				count_instruction <= '0';
 			elsif stall = '1' then
 				count_instruction <= '0'; -- hold PC and instruction
-			elsif flush = '1' or instruction_ready = '0' or insert_nop = '1' then
+			elsif flush = '1' or instruction_ready = '0' or insert_nop = '1' then    ---- or insert_nop = '1'
 				instruction <= RISCV_NOP;
 				count_instruction <= '0';
 			else
@@ -101,15 +111,27 @@ begin
 	end process get_instruction;
 
 --	-- Extract register addresses from the instruction word:
-	rs1_addr <= instruction(19 downto 15);
-	rs2_addr <= instruction(24 downto 20);
-	rd_addr  <= instruction(11 downto  7);
-	rd_addr_reg <= instruction(11 downto  7);
+	-- Conditionally output integer or FP registers based on opcode
+	rs1_addr <= instruction(19 downto 15) when instruction(6 downto 2) /= b"10100" else (others => '0');  --source register 1
+	rs2_addr <= instruction(24 downto 20) when instruction(6 downto 2) /= b"10100" else (others => '0');  --source register 2
+	rd_addr  <= instruction(11 downto  7) when instruction(6 downto 2) /= b"10100" else (others => '0');   --destination register
+	rd_addr_reg <= instruction(11 downto  7) when instruction(6 downto 2) /= b"10100" else (others => '0');  
+	---------For floating pont operations------------
+		-- Extract register addresses from the instruction word:
+	frs1_addr <= instruction(19 downto 15) when instruction(6 downto 2) = b"10100" else (others => '0');  --source register 1
+	frs2_addr <= instruction(24 downto 20) when instruction(6 downto 2) = b"10100" else (others => '0');  --source register 2
+	frd_addr  <= instruction(11 downto  7) when instruction(6 downto 2) = b"10100" else (others => '0');   --destination register
+	frd_addr_reg <= instruction(11 downto  7) when instruction(6 downto 2) = b"10100" else (others => '0');  
+
+	----------------------------------------------------
 	-- Extract the shamt value from the instruction word:
 	shamt    <= instruction(24 downto 20);
 
 	-- Extract the value specifying which comparison to do in branch instructions:
 	funct3 <= instruction(14 downto 12);
+
+
+	opcode_out <= instruction(6 downto 2);   ----0x53 for floats
 
 	-- Extract the immediate value from the instruction word:
 	immediate_decoder: entity work.pp_imm_decoder
@@ -131,11 +153,12 @@ begin
 	-- Control unit instance
 	control_unit: entity work.pp_control_unit
 		port map(
-			opcode => instruction(6 downto 2),
-			funct3 => instruction(14 downto 12),
-			funct7 => instruction(31 downto 25),
-			funct12 => instruction(31 downto 20),
+			opcode => instruction(6 downto 2),   --10100 for floats
+			funct3 => instruction(14 downto 12), -- rounding modes
+			funct7 => instruction(31 downto 25), --0,4,8,12 for floats
+			funct12 => instruction(31 downto 20), --
 			rd_write => rd_write_reg,
+			frd_write => frd_write_reg,  -- fpu.sv
 			branch => branch,
 			alu_x_src => alu_x_src,
 			alu_y_src => alu_y_src,
@@ -156,10 +179,14 @@ begin
                 insert_nop  <= '0';
                 nop_trigger <= '0';
             elsif stall = '0' then
-                if is_csd_op(alu_op_reg) and rd_write_reg = '1' and rd_addr_reg/=b"00000" and nop_trigger = '0' then
+                if is_csd_op(alu_op_reg) and rd_write_reg = '1' and  rd_addr_reg/=b"00000"  and nop_trigger = '0' then
                     insert_nop  <= '1';
                     nop_trigger <= '1';
-                else
+
+				elsif frd_write_reg = '1'  then
+					insert_nop  <= '1';
+					nop_trigger <= '1';
+                else 
                     insert_nop  <= '0';
                     nop_trigger <= '0';
                 end if;
@@ -168,5 +195,11 @@ begin
     end process;
     
     insert_nop_id <= insert_nop;
+	decode_valid_out <= instruction_ready when (stall = '0' and flush = '0') else '0';
+	instruction_out <= instruction;   ----32 bit riscv intruction
+
+
+	-- DIV Detection (combinational)  only for fpus
+	div_detected_out <= '1' when (alu_op_reg = ALU_FDIV) else '0';
 
 end architecture behaviour;
