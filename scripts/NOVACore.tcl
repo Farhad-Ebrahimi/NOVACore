@@ -135,6 +135,17 @@ set files [list \
  [file normalize "${origin_dir}/../src/SRAM-Sky130nm/sram_wrapper_main_memory.vhd"]\
  [file normalize "${origin_dir}/../src/SRAM-Sky130nm/sky130_sram_1kbyte_1rw1r_32x256_8.v"]\
  [file normalize "${origin_dir}/../src/SRAM-Sky130nm/sky130_sram_2kbyte_1rw1r_32x512_8.v"]\
+ [file normalize "${origin_dir}/../src/pp_fp_register_file.vhd"]\
+ [file normalize "${origin_dir}/../src/pp_fp_comparator.vhd"]\
+ [file normalize "${origin_dir}/../src/pp_fpu_add.sv"]\
+ [file normalize "${origin_dir}/../src/pp_fpu_mul.sv"]\
+ [file normalize "${origin_dir}/../src/pp_fpu_div.sv"]\
+ [file normalize "${origin_dir}/../src/pp_fpu_sub.sv"]\
+ [file normalize "${origin_dir}/../src/fpu_stage1.vhd"]\
+ [file normalize "${origin_dir}/../src/fpu_stage2.vhd"]\
+ [file normalize "${origin_dir}/../src/fpu_stage3.vhd"]\
+
+
 ]
 add_files -fileset sources_1 $files
 
