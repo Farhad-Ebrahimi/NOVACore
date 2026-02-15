@@ -82,7 +82,7 @@ begin
 	begin
 		-- Initialize both write signals to '0' (mutually exclusive) ----fpu 2026
 		--rd_write <= '0';      -- Default: no integer register write
-		frd_write <= '0';     -- Default: no FP register write
+		--frd_write <= '0';     -- Default: no FP register write
 		
 		case opcode is
 			when b"01101" => -- Load upper immediate
@@ -90,63 +90,76 @@ begin
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+				frd_write <= '0';
 			when b"00101" => -- Add upper immediate to PC
 				rd_write <= '1';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+				frd_write <= '0';
 			when b"11011" => -- Jump and link
 				rd_write <= '1';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_JUMP;
+				frd_write <= '0';
 			when b"11001" => -- Jump and link register
 				rd_write <= '1';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_JUMP_INDIRECT;
+				frd_write <= '0';
 			when b"11000" => -- Branch operations
 				rd_write <= '0';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_CONDITIONAL;
+				frd_write <= '0';
 			when b"00000" => -- Load instructions
 				rd_write <= '1';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+				frd_write <= '0';
 			when b"01000" => -- Store instructions
 				rd_write <= '0';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+				frd_write <= '0';
 			when b"00100" => -- Register-immediate operations
 				rd_write <= '1';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+				frd_write <= '0';
 			when b"01100" => -- Register-register operations
 				rd_write <= '1';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+				frd_write <= '0';
 			when b"00010" => -- Register-register operation _custom mul
 				rd_write <= '1';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
+				frd_write <= '0';
 			when b"10100" => -- Opcode 0x53 (Floating-point) ------dec-2025
     			frd_write <= '1';
     			exception <= '0';
+				rd_write <= '0';
     			exception_cause <= CSR_CAUSE_NONE;  ----fpu 2025
     			branch <= BRANCH_NONE;
 			when b"00001" => -- Floating-point load (FLW)
 				frd_write <= '1';
+				rd_write <= '0';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
 			when b"01001" => -- Floating-point store (FSW)
 				frd_write <= '0';
+				rd_write <= '0';
 				exception <= '0';
 				exception_cause <= CSR_CAUSE_NONE;
 				branch <= BRANCH_NONE;
@@ -184,12 +197,14 @@ begin
 					end if;
 				else
 					rd_write <= '1';
+					frd_write <= '0';
 					exception <= '0';
 					exception_cause <= CSR_CAUSE_NONE;
 					branch <= BRANCH_NONE;
 				end if;
 			when others =>
 				rd_write <= '0';
+				frd_write <= '0';
 				exception <= '1';
 				exception_cause <= CSR_CAUSE_INVALID_INSTR;
 				branch <= BRANCH_NONE;

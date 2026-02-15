@@ -532,8 +532,8 @@ frd_data_out <= frd_data_stg3;
       rs2_forwarded => rs2_forwarded,
 
 -------these are the inputs into fpu_stg1 
-      frs1_forwarded => frs1_forwarded,  ---- for fpu  
-      frs2_forwarded => frs2_forwarded,  ---- for fpu
+      frs1_forwarded => frs1_forwarded_reg,  ---- for fpu  
+      frs2_forwarded => frs2_forwarded_reg,  ---- for fpu
 
       instruction_in => instruction_in, ---- from decode stage
 
@@ -1079,9 +1079,9 @@ fp_alu_x_forward : process (
     )
   begin
     
-     if frd_write_to_stg3 = '1' and frd_addr_to_stg3 = frs1_addr  then
-        frs1_forwarded <= frs1_data;  -- FPU result from current Stage 3
-      elsif frd_write_to_forwarding_stg3 = '1' and frd_addr_to_forwarding_stg3 = frs1_addr  then
+     --if frd_write_to_stg3 = '1' and frd_addr_to_stg3 = frs1_addr  then
+     --   frs1_forwarded <= frs1_data;  -- FPU result from current Stage 3
+      if frd_write_to_forwarding_stg3 = '1' and frd_addr_to_forwarding_stg3 = frs1_addr  then
         frs1_forwarded <= frd_data_stg3;  -- Also from Stage 3 output
       elsif mem_frd_write = '1' and mem_frd_addr = frs1_addr  then
         frs1_forwarded <= mem_frd_value;  -- MEM stage
@@ -1130,9 +1130,9 @@ end if;
    wb_frd_addr, wb_frd_value, frs2_data)
  begin
      -- if (stall_exe_stg1 ='0') then
-        if frd_write_to_stg3 = '1' and frd_addr_to_stg3 = frs2_addr   then
-          frs2_forwarded <= frs2_data;  --- i think its correct now but still needs to check
-        elsif frd_write_to_forwarding_stg3 = '1' and frd_addr_to_forwarding_stg3 = frs2_addr  then
+        --if frd_write_to_stg3 = '1' and frd_addr_to_stg3 = frs2_addr   then
+        --  frs2_forwarded <= frs2_data;  --- i think its correct now but still needs to check
+        if frd_write_to_forwarding_stg3 = '1' and frd_addr_to_forwarding_stg3 = frs2_addr  then
           frs2_forwarded <= frd_data_stg3;
         elsif mem_frd_write = '1' and mem_frd_addr = frs2_addr  then
           frs2_forwarded <= mem_frd_value;

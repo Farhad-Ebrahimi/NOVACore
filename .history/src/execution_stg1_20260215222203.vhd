@@ -294,8 +294,8 @@ begin
   exception_taken <= not stall and (decode_exception or to_std_logic(exception_cause /= CSR_CAUSE_NONE));
 
   irq_asserted <= to_std_logic(ie_in = '1' and (irq and mie(31 downto 24)) /= x"00");
-  dmem_address <= fp_mem_addr when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else (others => '0');
-  --dmem_address <= (others => '0');
+  --dmem_address <= fp_mem_addr when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else (others => '0');
+  dmem_address <= (others => '0');
   --dmem_data_out  <= frs2_forwarded when mem_op = MEMOP_TYPE_STORE_FP else rs2_forwarded;
   dmem_data_out <= frs2_forwarded when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else rs2_forwarded; -- select FP store data when opcode matches
   --dmem_data_out <= rs2_forwarded;   ---- fpu

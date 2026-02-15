@@ -317,12 +317,12 @@ begin
 
 
   -- Calculate address  rs1 + imm for FP load/store, 
-fp_mem_addr <= std_logic_vector(
-                  unsigned(rs1_forwarded) + 
-                  unsigned(immediate_in)  -- sign-extend if needed
-                );
-
-
+--fp_mem_addr <= std_logic_vector(
+--                  unsigned(rs1_forwarded) + 
+--                  unsigned(immediate_in)  -- sign-extend if needed
+--                );
+--
+--
 
 
   pipeline_register : process (clk)

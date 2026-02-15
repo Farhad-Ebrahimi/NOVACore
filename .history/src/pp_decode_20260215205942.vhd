@@ -102,7 +102,7 @@ begin
 				count_instruction <= '0';
 			elsif stall = '1' or stall_fpu = '1' then
 				count_instruction <= '0'; -- hold PC and instruction
-			elsif flush = '1' or instruction_ready = '0'  then    ---- or insert_nop = '1'
+			elsif flush = '1' or instruction_ready = '0' or insert_nop = '1' then    ---- or insert_nop = '1'
 				instruction <= RISCV_NOP;
 				count_instruction <= '0';
 			else

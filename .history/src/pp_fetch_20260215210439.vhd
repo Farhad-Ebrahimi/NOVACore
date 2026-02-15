@@ -82,7 +82,7 @@ begin
 				else
 					pc <= pc_next;
 				end if;
-				if ( stall = '0' or stall_fpu ='0' ) and imem_ack = '1' then
+				if stall = '0'AND stall_fpu ='0' and imem_ack = '1' then
 				    imem_data <= imem_data_in;
 				end if;
 
@@ -106,7 +106,7 @@ begin
 	Branch_prediction_unit : entity work.bpu
 		generic map
 		(
-			INDEX_WIDTH => 9,
+			INDEX_WIDTH => 6,
 			RESET_ADDRESS => RESET_ADDRESS
 		)
 		port map

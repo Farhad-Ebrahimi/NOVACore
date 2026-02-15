@@ -296,8 +296,8 @@ begin
   irq_asserted <= to_std_logic(ie_in = '1' and (irq and mie(31 downto 24)) /= x"00");
   dmem_address <= fp_mem_addr when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else (others => '0');
   --dmem_address <= (others => '0');
-  --dmem_data_out  <= frs2_forwarded when mem_op = MEMOP_TYPE_STORE_FP else rs2_forwarded;
-  dmem_data_out <= frs2_forwarded when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else rs2_forwarded; -- select FP store data when opcode matches
+  dmem_data_out  <= frs2_forwarded when mem_op = MEMOP_TYPE_STORE_FP else rs2_forwarded;
+  --dmem_data_out <= frs2_forwarded when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else rs2_forwarded; -- select FP store data when opcode matches
   --dmem_data_out <= rs2_forwarded;   ---- fpu
   dmem_write_req <= '1' when (mem_op = MEMOP_TYPE_STORE or mem_op = MEMOP_TYPE_STORE_FP) and exception_taken = '0' else '0';
   dmem_read_req <= '1' when memop_is_load(mem_op) and exception_taken = '0' else '0';
@@ -313,16 +313,16 @@ begin
   fp_alu_y <= fp_alu_y_mux_o when stall ='0' else fp_alu_y_reg;
 
 
-  ---fp_mem_addr <= std_logic_vector(unsigned(alu_x) + unsigned(alu_y));
+  fp_mem_addr <= std_logic_vector(unsigned(alu_x) + unsigned(alu_y));
 
 
   -- Calculate address  rs1 + imm for FP load/store, 
-fp_mem_addr <= std_logic_vector(
-                  unsigned(rs1_forwarded) + 
-                  unsigned(immediate_in)  -- sign-extend if needed
-                );
-
-
+--fp_mem_addr <= std_logic_vector(
+--                  unsigned(rs1_forwarded) + 
+--                  unsigned(immediate_in)  -- sign-extend if needed
+--                );
+--
+--
 
 
   pipeline_register : process (clk)

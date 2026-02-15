@@ -244,7 +244,7 @@ architecture behaviour of pp_core is
 begin
 
 	stall_if <=  stall_id or delibrate_stall or insert_nop_id;
-	stall_id <= stall_ex or internal_stall;   ---internal stall added. 
+	stall_id <= stall_ex;   ---internal stall added. 
 	stall_ex <= hazard_detected or stall_mem or internal_stall; --- internal stall added.
 	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and (dmem_read_ack_r = '0'))
 		or to_std_logic(((mem_mem_op = MEMOP_TYPE_STORE) or (mem_mem_op = MEMOP_TYPE_STORE_FP)) and (dmem_write_ack_r = '0'));
@@ -401,6 +401,7 @@ begin
 			reset => reset,
 			flush => flush_id,
 			stall => stall_id,
+			stall_fpu => stall_fpu,  --added 2026
 			instruction_data => if_instruction,
 			instruction_address => if_pc,
 			instruction_ready => if_instruction_ready,
@@ -417,7 +418,7 @@ begin
 			frs2_addr => id_frs2_address,   ---- fpu
 			frd_addr => id_frd_address,    -----fpu
 			instruction_out => decode_instruction_out,  --fpuS
-			div_detected_out => div_detected,   
+			div_detected_out => open,   
 			-----------------------------------------------
 			csr_addr => id_csr_address,
 			shamt => id_shamt,
@@ -689,10 +690,10 @@ begin
 		id_funct7 <= if_instruction(31 downto 25);  ----added for fpu to detect div instruction in decode stage. 
 --------------------------added for fpu operations--------------------------------------
 	---- DIV Detection (combinational)  only for fpus
-	--div_detected <= '1' when (id_funct7 = "0001100" and 
-	--                    		 decode_valid_out = '1' and 
-	--                           div_stall = '0' and 
-	--                           div_exec_stall = '0') else '0';
+	div_detected <= '1' when (id_funct7 = "0001100" and 
+	                    		 decode_valid_out = '1' and 
+	                           div_stall = '0' and 
+	                           div_exec_stall = '0') else '0';
 
 -- Division Stall Control (sequential)
 DivStall: process(clk)

@@ -315,11 +315,21 @@ begin
 
   ---fp_mem_addr <= std_logic_vector(unsigned(alu_x) + unsigned(alu_y));
 
+  -- For FLW: I-type immediate (bits [31:20])
+  -- For FSW: S-type immediate (bits [31:25] and [11:7])
+  -- For others: use immediate_in from decoder
+  signal fpu_immediate : std_logic_vector(31 downto 0);
+  
+  fpu_immediate <= (31 downto 12 => instruction(31)) & instruction(31 downto 20) 
+                    when (instruction(6 downto 2) = b"00001") else  -- FLW: I-type
+                   (31 downto 12 => instruction(31)) & instruction(31 downto 25) & instruction(11 downto 7)
+                    when (instruction(6 downto 2) = b"01001") else  -- FSW: S-type
+                   immediate_in;  -- Default for other operations
 
   -- Calculate address  rs1 + imm for FP load/store, 
 fp_mem_addr <= std_logic_vector(
                   unsigned(rs1_forwarded) + 
-                  unsigned(immediate_in)  -- sign-extend if needed
+                  unsigned(fpu_immediate)  -- Use FP-specific immediate
                 );
 
 

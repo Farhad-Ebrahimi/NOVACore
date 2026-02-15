@@ -165,16 +165,7 @@ begin
 		end if;
 	end process rd_data_mux;
 
-	-- FP Data Path (SIMPLIFIED 2026): ----fpu 2026
-	-- FLW is ALWAYS a word load (no sub-word FP loads exist in RISC-V)
-	-- Pass memory data directly to FP writeback
-	---frd_data_out <= dmem_data_in when (mem_op = MEMOP_TYPE_LOAD_FP )   -----or mem_op = MEMOP_TYPE_LOAD_UNSIGNED
-	                ---else frd_data;
-
-
-
-
-
+	
 	frd_data_mux: process(frd_data, dmem_data_in, mem_op, mem_size)
 	begin
 		if mem_op = MEMOP_TYPE_LOAD_FP  then     -----or mem_op = MEMOP_TYPE_LOAD_UNSIGNED
