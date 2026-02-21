@@ -36,6 +36,7 @@ entity pp_decode is
 		-- Register addresses:
 		rs1_addr, rs2_addr, rd_addr : out register_address;
 		csr_addr : out csr_address;
+
 		frs1_addr,frs2_addr, frd_addr : out register_address;  --- for FPU
 
 		-- Shamt value for shift operations: not for floats
@@ -100,9 +101,9 @@ begin
 				instruction <= RISCV_NOP;
 				pc <= RESET_ADDRESS;
 				count_instruction <= '0';
-			elsif stall = '1' or stall_fpu = '1' then
+			elsif stall = '1' or stall_fpu = '1' then   -----so when division is detected we hold the pc and stall deocde
 				count_instruction <= '0'; -- hold PC and instruction
-			elsif flush = '1' or instruction_ready = '0'  then    ---- or insert_nop = '1'
+			elsif flush = '1' or instruction_ready = '0' or insert_nop = '1' then -----or insert_nop = '1'  then ----or insert_nop = '1'  then    ---- or insert_nop = '1'
 				instruction <= RISCV_NOP;
 				count_instruction <= '0';
 			else
@@ -113,21 +114,41 @@ begin
 		end if;
 	end process get_instruction;
 
---	-- Extract register addresses from the instruction word:
-	-- Conditionally output integer or FP registers based on opcode
-	rs1_addr <= instruction(19 downto 15) when instruction(6 downto 2) /= b"10100" else (others => '0');  --source register 1
-	rs2_addr <= instruction(24 downto 20) when instruction(6 downto 2) /= b"10100" else (others => '0');  --source register 2
-	rd_addr  <= instruction(11 downto  7) when instruction(6 downto 2) /= b"10100" else (others => '0');   --destination register
-	rd_addr_reg <= instruction(11 downto  7) when instruction(6 downto 2) /= b"10100" else (others => '0');  
+-- Extract register addresses from the instruction word:
+	-- Integer rs1 (exclude all FP instructions)
+rs1_addr <= instruction(19 downto 15)
+  when instruction(6 downto 2) /= b"10100"     
+  else (others => '0');
+
+-- Integer rs2
+rs2_addr <= instruction(24 downto 20)
+  when instruction(6 downto 2) /= b"10100" and
+       instruction(6 downto 2) /= b"00001" and
+       instruction(6 downto 2) /= b"01001"
+  else (others => '0');
+
+-- Integer rd
+rd_addr <= instruction(11 downto 7)
+  when instruction(6 downto 2) /= b"10100" and
+       instruction(6 downto 2) /= b"00001" and
+       instruction(6 downto 2) /= b"01001"
+  else (others => '0');
+
+rd_addr_reg <= instruction(11 downto 7)
+  when instruction(6 downto 2) /= b"10100" and
+       instruction(6 downto 2) /= b"00001" and
+       instruction(6 downto 2) /= b"01001"
+  else (others => '0');
+
 	---------For floating pont operations------------
-
-
-
 		-- Extract register addresses from the instruction word:
 	frs1_addr <= instruction(19 downto 15) when instruction(6 downto 2) = b"10100" else (others => '0');  --source register 1
-	frs2_addr <= instruction(24 downto 20) when instruction(6 downto 2) = b"10100" else (others => '0');  --source register 2
-	frd_addr  <= instruction(11 downto  7) when instruction(6 downto 2) = b"10100" else (others => '0');   --destination register
-	frd_addr_reg <= instruction(11 downto  7) when instruction(6 downto 2) = b"10100" else (others => '0');  
+	frs2_addr <= instruction(24 downto 20) when instruction(6 downto 2) = b"10100" 
+						or instruction(6 downto 2) = b"01001" else (others => '0');  --source register 2
+	frd_addr  <= instruction(11 downto  7) when instruction(6 downto 2) = b"10100"  or
+       instruction(6 downto 2) = b"00001" else (others => '0');   --destination register
+	frd_addr_reg <= instruction(11 downto  7) when instruction(6 downto 2) = b"10100"  or
+       instruction(6 downto 2) = b"00001" else (others => '0');   --destination register
 
 	----------------------------------------------------
 	-- Extract the shamt value from the instruction word:
@@ -162,6 +183,7 @@ begin
 			opcode => instruction(6 downto 2),   --10100 for floats
 			funct3 => instruction(14 downto 12), -- rounding modes
 			funct7 => instruction(31 downto 25), --0,4,8,12 for floats
+			rs2 => instruction(24 downto 20),    -- rs2 field for FCVT variant dispatch
 			funct12 => instruction(31 downto 20), --
 			rd_write => rd_write_reg,
 			frd_write => frd_write_reg,  -- fpu.sv
@@ -177,7 +199,7 @@ begin
 			csr_imm => csr_use_imm
 		);
 		
-    --  delibrate stall because of Stor instruction 
+    --  delibrate stall because of Stor instruction ---- still in doubt since core also has a stor instruction
 insert_nop_proc : process(clk)
 begin
     if rising_edge(clk) then
@@ -200,7 +222,7 @@ begin
 end process;
     
     insert_nop_id <= insert_nop;
-	decode_valid <= instruction_ready; ----when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0';
+	decode_valid <= instruction_ready when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0'; ----when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0';
 	instruction_out <= instruction;   ----32 bit riscv intruction
 
 
