@@ -238,6 +238,8 @@ architecture behaviour of pp_core is
   	signal en_fsub : std_logic;
   	signal en_fmul : std_logic;
   	signal en_fdiv : std_logic;
+
+	signal immediate_fp : std_logic_vector(31 downto 0);  -- Immediate for floating-point instructions, coming from immediate decoder
 	
 	--------------------------------------------------------------------
     
@@ -245,14 +247,14 @@ begin
 
 	stall_if <=  stall_id or delibrate_stall or insert_nop_id;
 	stall_id <= stall_ex;   ---internal stall added. 
-	stall_ex <= hazard_detected or stall_mem or internal_stall; --- internal stall added.
+	stall_ex <= hazard_detected or stall_mem ;--or internal_stall; --or internal_stall; --- internal stall added.
 	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and (dmem_read_ack_r = '0'))
 		or to_std_logic(((mem_mem_op = MEMOP_TYPE_STORE) or (mem_mem_op = MEMOP_TYPE_STORE_FP)) and (dmem_write_ack_r = '0'));
 	
 	-- Combined stall signals for Execute stages (must include internal_stall for DIV)
 	stall_exe_stg1_combined <= stall_ex or internal_stall;
 	stall_exe_stg2_combined <= stall_mem or internal_stall;
-	stall_freg <= stall_exe_stg1_combined;
+	stall_freg <= internal_stall or div_stall;
 		
     jump_inst_id <= '1' when (id_branch/=BRANCH_NONE) else '0';
 
@@ -264,7 +266,7 @@ begin
 	--------------------fpu stall----------------------
 	-- FPU.cpp:62:5  ----update_stall
 	internal_stall <= stall or div_exec_stall;  -- Full pipeline stall when DIV in Execute,MEM and WB
-	stall_fpu <= internal_stall and div_stall;   -- for if stage and decode stage	
+	stall_fpu <= internal_stall or div_stall;   -- for if stage and decode stage	
 	-------------------------------------------------------------------
    --------0x53 for fpus    ------rs1_data and rs2_data and  id_rd_address might not be needed 
 	--op1_out <= frs1_data when (opcode = "10100") else (others => '0') ;  -- FP reads if FP opcode
@@ -423,6 +425,7 @@ begin
 			csr_addr => id_csr_address,
 			shamt => id_shamt,
 			immediate => id_immediate,
+			immediate_fp => immediate_fp,  -- Immediate for floating-point instructions
 			rd_write => id_rd_write,
 			frd_write => id_frd_write,
 			branch => id_branch,
@@ -438,9 +441,26 @@ begin
 			decode_exception => id_exception,
 			decode_exception_cause => id_exception_cause
 		);
+---------------------------------------------------------------------
 
 
------------------------------------------------------------------------------
+ --int2float_frs1 : entity work.pp_int_2_float is
+  --  port(
+  --      data_in => open,    -
+  --      alu_op_in => id_alu_op,                   
+  --      frd_data_out => frs1_data  
+  --  );
+
+
+
+   --int2float_frs2 : entity work.pp_int_2_float is
+  --  port(
+  --      data_in => open,    -
+  --      alu_op_in => id_alu_op,                   
+  --      frd_data_out => frs2_data  
+  --  );
+
+---------------------------------------------------------------------
 	------- Execute (EX) Stage -------
 	execute : entity work.pp_execute
 		port map(
@@ -487,6 +507,7 @@ begin
 			instruction_in => decode_instruction_out,   -----coming from decode stage
 			opcode_in => opcode,
 			valid_in => decode_valid_out,
+			immediate_fp_in => immediate_fp, ----added
 			
 	       ----------------------------------------------
 			shamt_in => id_shamt,
@@ -587,11 +608,12 @@ begin
 		port map(
 			clk => clk,
 			reset => reset,
-			stall => stall_exe_stg2_combined ,
+			stall => stall_exe_stg2_combined,
 			dmem_data_in => dmem_data_in_r,
 			dmem_read_ack => dmem_read_ack_r,
 			dmem_write_ack => dmem_write_ack_r,
 			pc => ex_pc,
+			internal_stall => internal_stall,  ---added fpu 2026
 			rd_write_in => ex_rd_write,
 			rd_write_out => mem_rd_write,
 			rd_data_in => ex_rd_data,

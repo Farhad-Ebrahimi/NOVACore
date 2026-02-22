@@ -176,6 +176,9 @@ entity pp_execute is
     wb_csr_write : in csr_write_mode;
     wb_exception : in STD_LOGIC;
 
+
+    immediate_fp_in : in std_logic_vector(31 downto 0);  -- Immediate for floating-point instructions, coming from decode stage
+
 -------------------------------------------------------------------------------------------------
     -- Hazard detection unit signals:
     mem_mem_op : in memory_operation_type;
@@ -492,6 +495,10 @@ frd_data_out <= frd_data_stg3;
 
 
 
+ 
+
+
+
 
 
   -- Enable signals for power-efficient operation gating 
@@ -561,6 +568,7 @@ frd_data_out <= frd_data_stg3;
       -- Constant values:
       shamt_in => shamt_in,
       immediate_in => immediate_in,
+      immediate_fp_in => immediate_fp_in,  -- Immediate for floating-point 
 
       -- Instruction address:
       pc_in => pc_in,
@@ -1165,7 +1173,8 @@ end if;
 
       load_hazard_detected <= '1';
       
-    elsif (mem_mem_op = MEMOP_TYPE_LOAD or mem_mem_op = MEMOP_TYPE_LOAD or mem_mem_op = MEMOP_TYPE_LOAD_UNSIGNED) and
+    elsif (mem_mem_op = MEMOP_TYPE_LOAD or mem_mem_op = MEMOP_TYPE_LOAD_FP
+     or mem_mem_op = MEMOP_TYPE_LOAD_UNSIGNED) and
       ((alu_x_src = ALU_SRC_REG and mem_rd_addr = rs1_addr and rs1_addr /= b"00000" ) or (mem_frd_addr = frs1_addr ) or 
       (alu_y_src = ALU_SRC_REG and mem_rd_addr = rs2_addr and rs2_addr /= b"00000") or (mem_frd_addr = frs2_addr )) then
 
@@ -1206,5 +1215,5 @@ end if;
 --  end process detect_csd_instr_hazard;
   
   hazard_detected <= load_hazard_detected or csr_hazard_detected ;--or (csd_instruction_hazard);
-------from simulation csr_hazard_detected always 1 so pc is not incrementing
+
 end architecture behaviour;

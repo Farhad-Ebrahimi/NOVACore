@@ -47,12 +47,14 @@ entity fp_exe_stg1 is
 
     -- registers value
     rd_data_out : out std_logic_vector(31 downto 0);
+    --frd_data_out : out std_logic_vector(31 downto 0);  -- FP register data output (for FMV.W.X)
 
     
 
     -- Constant values:
     shamt_in : in std_logic_vector(4 downto 0);
     immediate_in : in std_logic_vector(31 downto 0);
+    immediate_fp_in : in std_logic_vector(31 downto 0);  -- Immediate for floating-point instructions, coming from
 
     -- Instruction address:
     pc_in : in std_logic_vector(31 downto 0);
@@ -203,8 +205,11 @@ architecture behaviour of fp_exe_stg1 is
   signal mem_op : memory_operation_type;
   signal mem_size : memory_operation_size;
 
+  signal frd_data_out : std_logic_vector(31 downto 0);  -- 
+
   signal pc : std_logic_vector(31 downto 0);
   signal immediate : std_logic_vector(31 downto 0);
+  signal immediate_fp : std_logic_vector(31 downto 0);  -- Immediate for floating-
   signal shamt : std_logic_vector(4 downto 0);
   signal funct3 : std_logic_vector(2 downto 0);
 
@@ -236,18 +241,10 @@ architecture behaviour of fp_exe_stg1 is
 
   signal cmp : unsigned(31 downto 0);
   signal fp_mem_addr : std_logic_vector(31 downto 0);
+  signal fp_immediate : std_logic_vector(31 downto 0);
+  signal instruction : std_logic_vector(31 downto 0); --- added 2026-02
 
   --signal div_start_in : std_logic;
-
-
----------------------trying something different----------------------------
-
-
-
- 
-  
- 
-  
 
 begin
 
@@ -257,7 +254,15 @@ begin
   cmp <= x"AAAAAAAA";
 
   csr_value <= csr_value_in;
+
+
   rd_data_out <= alu_result;
+  
+  -- FMV routing: FMV.X.W writes FP register to integer register file
+  -----rd_data_out <= frs1_forwarded when alu_op_in = ALU_FMVXW else alu_result;
+  
+  -- FMV.W.X writes integer register to FP register file
+  ----frd_data_out <= rs1_forwarded when alu_op_in = ALU_FMVWX else (others => '0');
 
  
 
@@ -294,10 +299,9 @@ begin
   exception_taken <= not stall and (decode_exception or to_std_logic(exception_cause /= CSR_CAUSE_NONE));
 
   irq_asserted <= to_std_logic(ie_in = '1' and (irq and mie(31 downto 24)) /= x"00");
-  dmem_address <= fp_mem_addr when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else (others => '0');
-  --dmem_address <= (others => '0');
-  --dmem_data_out  <= frs2_forwarded when mem_op = MEMOP_TYPE_STORE_FP else rs2_forwarded;
-  dmem_data_out <= frs2_forwarded when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else rs2_forwarded; -- select FP store data when opcode matches
+  ----dmem_address <= fp_mem_addr when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else (others => '0');
+  dmem_address <= (others => '0');
+  dmem_data_out  <= frs2_forwarded when mem_op = MEMOP_TYPE_STORE_FP else rs2_forwarded;
   --dmem_data_out <= rs2_forwarded;   ---- fpu
   dmem_write_req <= '1' when (mem_op = MEMOP_TYPE_STORE or mem_op = MEMOP_TYPE_STORE_FP) and exception_taken = '0' else '0';
   dmem_read_req <= '1' when memop_is_load(mem_op) and exception_taken = '0' else '0';
@@ -309,18 +313,28 @@ begin
   alu_y <= alu_y_mux_o when stall ='0' else alu_y_reg;
 
 
-  fp_alu_x <= fp_alu_x_mux_o when stall ='0' else fp_alu_x_reg;
-  fp_alu_y <= fp_alu_y_mux_o when stall ='0' else fp_alu_y_reg;
+ --fp_alu_x <= fp_alu_x_mux_o when (stall ='0' or internal_stall = '0') else fp_alu_x_reg;
+ --fp_alu_y <= fp_alu_y_mux_o when (stall ='0' or internal_stall = '0') else fp_alu_y_reg;
 
 
   ---fp_mem_addr <= std_logic_vector(unsigned(alu_x) + unsigned(alu_y));
 
 
   -- Calculate address  rs1 + imm for FP load/store, 
-fp_mem_addr <= std_logic_vector(
-                  unsigned(rs1_forwarded) + 
-                  unsigned(immediate_in)  -- sign-extend if needed
-                );
+--fp_mem_addr <= std_logic_vector(
+--                  unsigned(rs1_forwarded) + 
+--                  unsigned(immediate_in)  -- sign-extend if needed
+--                );
+
+
+-- Extract immediate for FLW/FSW from instruction
+----fp_immediate <= (31 downto 12 => instruction(31)) & instruction(31 downto 20)
+----                  when (instruction(6 downto 2) = b"00001") else  -- FLW: I-type
+----                (31 downto 12 => instruction(31)) & instruction(31 downto 25) & instruction(11 downto 7)
+----                  when (instruction(6 downto 2) = b"01001") else  -- FSW: S-type
+----               (others => '0');  -- For integers, not used
+----
+----fp_mem_addr <= std_logic_vector(unsigned(rs1_forwarded) + unsigned(fp_immediate));
 
 
 
@@ -338,10 +352,12 @@ fp_mem_addr <= std_logic_vector(
         count_instruction_out <= '0';
       elsif stall = '1' then
         csr_write <= CSR_WRITE_NONE;
-      elsif stall = '0' then
+      elsif stall = '0'  then   ---or internal_stall = '0'
 
         pc <= pc_in;
         count_instruction_out <= count_instruction_in;
+
+        instruction <= instruction_in;  --- added 2026-02
         
         -- Register signals:
         rd_write_out <= rd_write_in;
@@ -372,6 +388,7 @@ fp_mem_addr <= std_logic_vector(
 
         -- Constant values:
         immediate <= immediate_in;
+        immediate_fp <= immediate_fp_in;  
         shamt <= shamt_in;
         funct3 <= funct3_in;
 
@@ -483,6 +500,14 @@ end process;
         jump_target <= (others => '0');
     end case;
   end process calc_jump_tgt;
+
+
+
+    
+
+
+  
+
 
   alu_x_mux : entity work.pp_alu_mux
     port map(

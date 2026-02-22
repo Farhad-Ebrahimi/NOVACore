@@ -284,7 +284,7 @@ begin
         -- Initialize latched DIV done flag on reset
         
    
-      elsif stall = '0' then
+      elsif stall = '0'  then   ----or internal_stall = '0'
       
         pc                    <= pc_in;
         count_instruction_out <= count_instruction_in;

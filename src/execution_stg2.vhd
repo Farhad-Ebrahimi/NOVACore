@@ -310,7 +310,7 @@ begin
         mem_op                <= MEMOP_TYPE_NONE;
         count_instruction_out <= '0';
         exception<= '0';
-      elsif stall = '0' then
+      elsif stall = '0' then   --- or internal_stall = '0'
       
         pc                    <= pc_in;
         count_instruction_out <= count_instruction_in;

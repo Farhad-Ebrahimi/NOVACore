@@ -58,9 +58,9 @@ begin
 
 	do_flush <= wrong_prediction;
 	
-	--instruction_data <= imem_data_in;
-	instruction_data <= imem_data_in when ( stall = '0' or stall_fpu ='0' ) and imem_ack='1'  else imem_data;
-	instruction_ready <= imem_ack and ((not stall) or (not stall_fpu)) and (not cancel_fetch) ;
+	--instruction_data <= imem_data_in;    ----stalls for fpus are properly Ored, no dependencies
+	instruction_data <= imem_data_in when ( stall = '0' or stall_fpu ='0') and imem_ack='1'  else imem_data;  ---or stall_fpu ='0'
+	instruction_ready <= imem_ack and ((not stall) or (not stall_fpu)) and (not cancel_fetch) ;  ----or (not stall_fpu)
 	instruction_address <= pc;
 
 	imem_req <= not reset;
@@ -82,7 +82,7 @@ begin
 				else
 					pc <= pc_next;
 				end if;
-				if ( stall = '0' or stall_fpu ='0' ) and imem_ack = '1' then
+				if ( stall = '0' or stall_fpu = '0') and imem_ack = '1' then   -----or stall_fpu ='0'
 				    imem_data <= imem_data_in;
 				end if;
 
@@ -96,7 +96,7 @@ begin
 			pc_next <= evec;
 		elsif wrong_prediction = '1' then
 			pc_next <= predicted_target;
-		elsif imem_ack = '1' and (stall = '0' or stall_fpu = '0') and cancel_fetch = '0' then
+		elsif imem_ack = '1' and (stall = '0' or stall_fpu = '0') and cancel_fetch = '0' then   ----or stall_fpu = '0'
 			pc_next <= predicted_target;
 		else
 			pc_next <= pc;

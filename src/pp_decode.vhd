@@ -50,6 +50,7 @@ entity pp_decode is
 
 		-- Immediate value for immediate instructions: not for floats
 		immediate : out std_logic_vector(31 downto 0);
+		immediate_fp : out std_logic_vector(31 downto 0) ; -- Immediate for floating-point instructions,
 
 		-- Control signals:
 		rd_write          : out std_logic;
@@ -84,10 +85,12 @@ architecture behaviour of pp_decode is
 	signal alu_op_reg : alu_operation;
 	signal frd_addr_reg : register_address;  ---for fpu
 	signal decode_valid : std_logic;
+	signal immediate_fp_out : std_logic_vector(31 downto 0);  -- Immediate for floating-point 
 	
 begin
 
 	immediate <= immediate_value;
+	immediate_fp <= immediate_fp_out;
 	alu_op <= alu_op_reg;
 	rd_write <= rd_write_reg;
 	frd_write <= frd_write_reg;  --- for FPU
@@ -101,7 +104,7 @@ begin
 				instruction <= RISCV_NOP;
 				pc <= RESET_ADDRESS;
 				count_instruction <= '0';
-			elsif stall = '1' or stall_fpu = '1' then   -----so when division is detected we hold the pc and stall deocde
+			elsif stall = '1' or stall_fpu = '1' then   -----or stall_fpu = '1'so when division is detected we hold the pc and stall deocde
 				count_instruction <= '0'; -- hold PC and instruction
 			elsif flush = '1' or instruction_ready = '0' or insert_nop = '1' then -----or insert_nop = '1'  then ----or insert_nop = '1'  then    ---- or insert_nop = '1'
 				instruction <= RISCV_NOP;
@@ -164,7 +167,8 @@ rd_addr_reg <= instruction(11 downto 7)
 	immediate_decoder: entity work.pp_imm_decoder
 		port map(
 			instruction => instruction(31 downto 2),
-			immediate => immediate_value
+			immediate => immediate_value,
+			immediate_fp => immediate_fp_out
 		);
 
 	-- CSR address decoding
@@ -214,15 +218,13 @@ begin
                 insert_nop  <= '0';
                 nop_trigger <= '0';
             end if;
-		--elsif stall_fpu = '0' and frd_write_reg = '1'  then
-		--		insert_nop  <= '0';
-		--		nop_trigger <= '0';
+		
         end if;
     end if;
 end process;
     
     insert_nop_id <= insert_nop;
-	decode_valid <= instruction_ready when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0'; ----when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0';
+	decode_valid <= instruction_ready when ((stall_fpu = '0') or(stall = '0')) and flush = '0' else '0'; ---(stall_fpu = '0') or ---when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0';
 	instruction_out <= instruction;   ----32 bit riscv intruction
 
 

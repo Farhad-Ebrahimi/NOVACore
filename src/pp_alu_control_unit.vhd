@@ -20,6 +20,7 @@ entity pp_alu_control_unit is
 		opcode  : in std_logic_vector( 4 downto 0);
 		funct3  : in std_logic_vector( 2 downto 0);
 		funct7  : in std_logic_vector( 6 downto 0);
+		rs2     : in std_logic_vector( 4 downto 0);  -- rs2 field to distinguish FCVT variants
 		
 		-- Sources of ALU operands:
 		alu_x_src, alu_y_src : out alu_operand_source;
@@ -32,7 +33,7 @@ end entity pp_alu_control_unit;
 architecture behaviour of pp_alu_control_unit is
 begin
 
-	decode_alu: process(opcode, funct3, funct7)
+	decode_alu: process(opcode, funct3, funct7, rs2)
 	begin
 		case opcode is
 			when b"01101" => -- Load upper immediate
@@ -166,12 +167,30 @@ begin
 					when b"0001100" =>
 						alu_op <= ALU_FDIV;  	----fpu 2025
 					when b"1110000" =>
-					     alu_op <= ALU_FMVXW;  	----fpu 2025
+					     alu_op <= ALU_FMVXW;  	----fpu 2025 (FP register → Integer register)
+					when b"1111000" =>
+					     alu_op <= ALU_FMVWX;  	----fpu 2025 (Integer register → FP register)
 					when b"1010000" =>
 					     alu_op <= ALU_Comp;  	----fpu 2025
 					when b"1100000" =>
-					     alu_op <= ALU_FCVT_WU; ----fpu 2025
-					when others =>
+					-- FCVT: Check rs2 to distinguish signed vs unsigned
+					--if rs2 = b"00000" then
+						alu_op <= ALU_FCVT_W;   -- FCVT.W.S (FP → signed int)
+					--elsif rs2 = b"00001" then
+						--alu_op <= ALU_FCVT_WU;  -- FCVT.WU.S (FP → unsigned int)
+					--else
+						--alu_op <= ALU_INVALID;
+					--end if;				
+					when b"1101000" =>
+				-- FCVT.S: Check rs2 to distinguish signed vs unsigned (int → FP)
+				--if rs2 = b"00000" then
+					alu_op <= ALU_FCVT_S_W;  -- FCVT.S.W (signed int → FP)
+				--elsif rs2 = b"00001" then
+				--	alu_op <= ALU_FCVT_S_WU; -- FCVT.S.WU (unsigned int → FP)
+				--else
+				--	alu_op <= ALU_INVALID;
+				--end if;					
+				when others =>
 						alu_op <= ALU_INVALID;
 				end case;
 			when b"00001" => -- Floating-point load (FLW)

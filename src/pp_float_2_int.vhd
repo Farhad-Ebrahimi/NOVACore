@@ -32,13 +32,14 @@ begin
         variable fraction    : unsigned(22 downto 0);
         variable mantissa    : unsigned(23 downto 0);
         variable exp_unbias  : integer;
-        variable result      : unsigned(31 downto 0);
+        variable result      : signed(31 downto 0);
         variable shift       : integer;
     begin
 
         result := (others => '0');
 
         if alu_op_in = ALU_FCVT_WU then
+            -- Unsigned conversion: FP → unsigned 32-bit integer
 
             -- Extract fields
             sign     := frd_data_in(31);
@@ -81,12 +82,73 @@ begin
                     shift := exp_unbias - 23;
 
                     if shift >= 0 then
-                        result := shift_left(resize(mantissa, 32), shift);
+                        result := signed(shift_left(resize(mantissa, 32), shift));
                     else
-                        result := shift_right(resize(mantissa, 32), -shift);
+                        result := signed(shift_right(resize(mantissa, 32), -shift));
                     end if;
                 end if;
             end if;
+
+        elsif alu_op_in = ALU_FCVT_W then
+            -- Signed conversion: FP → signed 32-bit integer
+
+            -- Extract fields
+            sign     := frd_data_in(31);
+            exponent := unsigned(frd_data_in(30 downto 23));
+            fraction := unsigned(frd_data_in(22 downto 0));
+
+            -- Zero / subnormal
+            if exponent = 0 then
+                result := (others => '0');
+
+            -- NaN or Inf
+            elsif exponent = 255 then
+                if fraction = 0 then
+                    -- ±Inf (return max overflow value)
+                    if sign = '1' then
+                        result := to_signed(-2147483648, 32); -- -2^31
+                    else
+                        result := to_signed(2147483647, 32);  -- 2^31 - 1
+                    end if;
+                else
+                    -- NaN
+                    result := (others => '0');
+                end if;
+
+            else
+                -- Add hidden 1
+                mantissa := "1" & fraction;
+
+                -- Remove bias
+                exp_unbias := to_integer(exponent) - 127;
+
+                if exp_unbias < 0 then
+                    result := (others => '0');
+
+                elsif exp_unbias >= 31 then
+                    -- Overflow
+                    if sign = '1' then
+                        result := to_signed(-2147483648, 32); -- -2^31
+                    else
+                        result := to_signed(2147483647, 32);  -- 2^31 - 1
+                    end if;
+
+                else
+                    shift := exp_unbias - 23;
+                    
+                    if shift >= 0 then
+                        result := signed(shift_left(resize(mantissa, 32), shift));
+                    else
+                        result := signed(shift_right(resize(mantissa, 32), -shift));
+                    end if;
+
+                    -- Apply sign
+                    if sign = '1' then
+                        result := -result;
+                    end if;
+                end if;
+            end if;
+
         end if;
 
         rd_data_out <= std_logic_vector(result);

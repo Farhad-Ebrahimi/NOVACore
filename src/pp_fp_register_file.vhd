@@ -36,25 +36,11 @@ architecture behaviour of pp_fpu_register_file is
 	--! Register array type.
 	type regfile_array is array(0 to 31) of std_logic_vector(31 downto 0);
 
-	-- signal regfile : regfile_array := (
-   --    14 => x"40490FDA",  -- f14 initialized to 0x40490FDA
-   --    15 => x"402DF84D",  -- f15 initialized to 0x402DF84D
-   --    others => (others => '0')
-   --);
-
 begin
 
 	regfile: process(clk)
 		
 		variable fp_registers : regfile_array := (
-			--1 => x"40490FDA",  -- f14 initialized to 0x40490FDA
-			--2 => x"402DF84D",  -- f15 initialized to 0x402DF84D
-			--7 => x"3F800000",  -- f15 initialized to 0x402DF84D
-			--8 => x"00000000",  -- f15 initialized to 0x402DF84D
-			--10 => x"72C4653C",  -- f15 initialized to 0x402DF84D
-			--11 => x"0DA24260",  -- f15 initialized to 0x402DF84D
-			--14 => x"7F800000",  -- f15 initialized to 0x402DF84D
-			--15 => x"7FC00000",  -- f15 initialized to 0x402DF84D
 			others => (others => '0')
 		);
 	begin

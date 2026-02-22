@@ -16,6 +16,8 @@ entity pp_memory is
 		reset  : in std_logic;
 		stall  : in std_logic;
 
+		internal_stall  : in std_logic;
+
 		-- Data memory inputs:
 		dmem_read_ack  : in std_logic;
 		dmem_write_ack : in std_logic;
@@ -85,7 +87,7 @@ begin
 				csr_write_out <= CSR_WRITE_NONE;
 				count_instr_out <= '0';
 				mem_op <= MEMOP_TYPE_NONE;
-			elsif stall = '0' then
+			elsif stall = '0'   then   ----or internal_stall = '0'
 				mem_size <= mem_size_in;
 				rd_data <= rd_data_in;	
 				rd_addr_out <= rd_addr_in;	
@@ -166,12 +168,12 @@ begin
 	end process rd_data_mux;
 
 	
-	frd_data_mux: process(frd_data, dmem_data_in, mem_op, mem_size)
+	frd_data_mux: process(frd_data, dmem_data_in, mem_op)
 	begin
 		if mem_op = MEMOP_TYPE_LOAD_FP  then     -----or mem_op = MEMOP_TYPE_LOAD_UNSIGNED
-			if  mem_size = MEMOP_SIZE_WORD then
+			--if  mem_size = MEMOP_SIZE_WORD then
 				 frd_data_out <= dmem_data_in ;
-			end if;
+			--end if;
 		else
 			frd_data_out <= frd_data;
 

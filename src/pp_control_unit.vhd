@@ -22,6 +22,7 @@ entity pp_control_unit is
 		opcode  : in std_logic_vector( 4 downto 0); --! Instruction opcode field.
 		funct3  : in std_logic_vector( 2 downto 0); --! Instruction @c funct3 field.
 		funct7  : in std_logic_vector( 6 downto 0); --! Instruction @c funct7 field.
+		rs2     : in std_logic_vector( 4 downto 0); --! Instruction @c rs2 field (for FCVT variant dispatch).
 		funct12 : in std_logic_vector(11 downto 0); --! Instruction @c funct12 field.
 
 		-- Control signals:
@@ -72,6 +73,7 @@ begin
 			opcode => opcode,
 			funct3 => funct3,
 			funct7 => funct7,
+			rs2 => rs2,
 			alu_x_src => alu_x_src,
 			alu_y_src => alu_y_src,
 			alu_op => alu_op_temp
