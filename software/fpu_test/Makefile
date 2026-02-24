@@ -1,88 +1,41 @@
+# The Potato Processor Software Components
+# (c) Kristian Klomsten Skordal 2015 <kristian.skordal@wafflemail.net>
+# Report bugs and issues on <https://github.com/skordal/potato/issues>
+
 .PHONY: all clean
+include ../common.mk
 
-# Directories
-Prefix_dir := ../..
+LINKER_SCRIPT := ../potato.ld
+TARGET_LDFLAGS += -Wl,-T$(LINKER_SCRIPT) -Wl,--Map,fputest.map
 
-BINS = fputest.bin 
-COES = $(BINS:.bin=.coe)
+OBJECTS := fputest.o func.o start.o
 
-# Cross compiler toolchain
-TARGET_PREFIX ?= riscv32-unknown-elf
-TARGET_CC := $(TARGET_PREFIX)-gcc
-TARGET_LD := $(TARGET_PREFIX)-gcc
-TARGET_OBJCOPY := $(TARGET_PREFIX)-objcopy
-TARGET_SIZE := $(TARGET_PREFIX)-size
-HEXDUMP ?= hexdump
+all: fputest.elf fputest.bin fputest.s func.s
 
-# Linker script
-LINKER_SCRIPT := $(Prefix_dir)/software/potato.ld
-
-# Compiler flags
-TARGET_CFLAGS += \
-	-march=rv32imf_zicsr -mabi=ilp32 -mno-div -Wall -Os \
-	-ffreestanding -fno-builtin -fomit-frame-pointer \
-	-ffunction-sections -fdata-sections \
-	-std=gnu99 \
-	-I$(Prefix_dir) \
-	-I$(Prefix_dir)/libsoc \
-	-ffp-contract=off \
-    -fno-strict-aliasing \
-	-Wall -Werror=implicit-function-declaration
-
-# Linker flags
-TARGET_LDFLAGS += \
-	-march=rv32im_zicsr -mno-div -nostartfiles \
-	-L$(Prefix_dir)/libsoc \
-	-Wl,-T$(LINKER_SCRIPT) \
-	-Wl,--gc-sections \
-	-Wl,--no-relax \
-	-Wl,-m,elf32lriscv \
-	--specs=nosys.specs \
-	-Wl,--Map,fputest.map
-
-OBJECTS := fputest.o start.o func.o
-
-# Default target
-all: fputest.elf fputest.bin fputest.s func.s $(COES)
-
-# ELF build
 fputest.elf: $(OBJECTS) $(LINKER_SCRIPT)
-	$(TARGET_CC) $(TARGET_LDFLAGS) -o $@ $(OBJECTS) -lm
-	$(TARGET_SIZE) $@
+	$(TARGET_LD) -o fputest.elf $(TARGET_LDFLAGS) $(OBJECTS) -lm
+	$(TARGET_SIZE) fputest.elf
 
-# Binary from ELF
-%.bin: %.elf
-	$(TARGET_OBJCOPY) -j .text -j .data -j .rodata -O binary $< $@
-
-# Human-readable assembly
-fputest.s: fputest.c func.h
-	$(TARGET_CC) $(TARGET_CFLAGS) -S -o $@ $<
-func.s: func.c 
-	$(TARGET_CC) $(TARGET_CFLAGS) -S -o $@ $<
-
-# Object files
-fputest.o: fputest.c func.h \
-	$(Prefix_dir)/platform.h \
-	$(Prefix_dir)/potato.h \
-	$(Prefix_dir)/libsoc/timer.h \
-	$(Prefix_dir)/libsoc/uart.h
-	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
-
-# Object files
-func.o: func.c \
-	$(Prefix_dir)/platform.h \
-	$(Prefix_dir)/potato.h \
-	$(Prefix_dir)/libsoc/timer.h \
-	$(Prefix_dir)/libsoc/uart.h
-	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
-
-start.o: $(Prefix_dir)/software/start.S $(Prefix_dir)/platform.h
-	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
-
-# Generate COE file for FPGA BRAM
-%.coe: %.bin
-	@$(HEXDUMP) -v -e '1/4 "%08x,\n"' $< | sed '$$s/,$$/;/' >> $@
-
-# Clean target
 clean:
-	$(RM) $(OBJECTS) fputest.elf fputest.bin fputest.coe fputest.map fputest.s func.s
+	-$(RM) $(OBJECTS)
+	-$(RM) fputest.elf fputest.bin fputest.coe fputest.map fputest.s func.s
+
+# Compile source files into human-readable assembly files
+
+fputest.s: fputest.c  func.h ../../platform.h ../../potato.h ../../libsoc/timer.h ../../libsoc/uart.h ../../libsoc/icerror.h ../../libsoc/gpio.h
+	$(TARGET_CC) -S $@ $(TARGET_CFLAGS) $<
+func.s: func.c  func.h ../../platform.h ../../potato.h ../../libsoc/timer.h ../../libsoc/uart.h ../../libsoc/icerror.h ../../libsoc/gpio.h
+	$(TARGET_CC) -S $@ $(TARGET_CFLAGS) $<
+
+
+# Object file rules:
+
+fputest.o: fputest.c func.h ../../platform.h ../../potato.h ../../libsoc/timer.h ../../libsoc/uart.h ../../libsoc/icerror.h ../../libsoc/gpio.h
+	$(TARGET_CC) -c -o $@ $(TARGET_CFLAGS) $<
+
+func.o: func.c func.h ../../platform.h ../../potato.h ../../libsoc/timer.h ../../libsoc/uart.h ../../libsoc/icerror.h ../../libsoc/gpio.h
+	$(TARGET_CC) -c -o $@ $(TARGET_CFLAGS) $<
+
+start.o: ../start.S ../../platform.h
+	$(TARGET_CC) -c -o $@ $(TARGET_CFLAGS) $<
+

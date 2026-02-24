@@ -10,10 +10,10 @@ TARGET_SIZE := $(TARGET_PREFIX)-size
 TARGET_OBJCOPY := $(TARGET_PREFIX)-objcopy
 HEXDUMP ?= hexdump
 
-TARGET_CFLAGS +=  -march=rv32im_zicsr -mno-div -Wall -Os -fomit-frame-pointer \
+TARGET_CFLAGS +=  -march=rv32imf_zicsr -mno-div -Wall -Os -fomit-frame-pointer \
 	-ffreestanding -fno-builtin -fanalyzer -I../.. -I../../libsoc -std=gnu99 \
 	-Wall -Werror=implicit-function-declaration -ffunction-sections -fdata-sections
-TARGET_LDFLAGS += -march=rv32im_zicsr -mno-div -nostartfiles -L../libsoc \
+TARGET_LDFLAGS += -march=rv32imf_zicsr -mno-div -nostartfiles -L../libsoc \
 	-Wl,-m,elf32lriscv --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
 
 # Rule for converting an ELF file to a binary file:
