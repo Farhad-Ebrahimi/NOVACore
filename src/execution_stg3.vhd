@@ -267,6 +267,11 @@ begin
   dmem_data_size_out <= dmem_data_size;
   dmem_write_req_out <= dmem_write_req;
   dmem_read_req_out  <= dmem_read_req;
+
+  ---frd_data_out <=  fpu_result;
+  frd_data_out <= bw_alu_result when alu_op = ALU_FMVWX else fpu_result;
+
+  -----integer to float 
   
  
 
@@ -276,6 +281,7 @@ begin
     if rising_edge(clk) then
       if reset = '1' then
         rd_write_out          <= '0';
+        frd_write_out         <= '0';  ----feb2026
         branch                <= BRANCH_NONE;
         csr_write             <= CSR_WRITE_NONE;
         mem_op                <= MEMOP_TYPE_NONE;
@@ -308,7 +314,7 @@ begin
         alu_op   <= alu_op_in;
       
         -- FPU Stage 3 latching
-        frd_data_out <= fpu_result;   ----- not used i guess
+        ---frd_data_out <= fpu_result;   ----- not used i guess
        
         -- Control signals:
         branch   <= branch_in;
@@ -366,8 +372,9 @@ begin
                 alu_result <= csd_alu_result_HL(63 downto 32);
             when ALU_ADD | ALU_SUB =>
                 alu_result <= csd_alu_result_AS;
-            when ALU_SLT | ALU_SLTU | ALU_AND | ALU_OR | ALU_XOR | ALU_SLL | ALU_SRL |ALU_SRA =>
+            when ALU_SLT | ALU_SLTU | ALU_AND | ALU_OR | ALU_XOR | ALU_SLL | ALU_SRL |ALU_SRA | ALU_FMVXW =>
                 alu_result <= bw_alu_result;  
+             
             when others =>
                 alu_result <= (others=>'0');  
         end case;

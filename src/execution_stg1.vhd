@@ -256,13 +256,18 @@ begin
   csr_value <= csr_value_in;
 
 
-  rd_data_out <= alu_result;
+  --rd_data_out <= alu_result;
   
   -- FMV routing: FMV.X.W writes FP register to integer register file
-  -----rd_data_out <= frs1_forwarded when alu_op_in = ALU_FMVXW else alu_result;
+  -- FP comparisons (FEQ.S, FLT.S, FLE.S) write 0/1 result to integer register
+  rd_data_out <= frs1_forwarded when alu_op = ALU_FMVXW 
+                  else rs1_forwarded when alu_op = ALU_FMVWX  -----int to floats
+                  else (31 downto 1 => '0') & fp_branch_condition 
+                       when (alu_op = ALU_FEQ or alu_op = ALU_FLT or alu_op = ALU_FLE)
+                  else alu_result;
   
   -- FMV.W.X writes integer register to FP register file
-  ----frd_data_out <= rs1_forwarded when alu_op_in = ALU_FMVWX else (others => '0');
+  ---frd_data_out <= rs1_forwarded when alu_op_in = ALU_FMVWX else (others => '0');
 
  
 
@@ -288,7 +293,7 @@ begin
 ---------jump not for floats
   do_jump <= (to_std_logic(branch = BRANCH_JUMP or branch = BRANCH_JUMP_INDIRECT)
     or (to_std_logic(branch = BRANCH_CONDITIONAL) and branch_condition)
-    or to_std_logic(branch = BRANCH_SRET)) and not stall;
+    or to_std_logic(branch = BRANCH_SRET)) and not stall and not internal_stall; --------internal stall added 
   
   jump_inst <= '1' when (branch /= BRANCH_NONE) else '0';
   
@@ -296,7 +301,7 @@ begin
   jump_target_out <= jump_target;
 
   mtvec_out <= std_logic_vector(unsigned(mtvec));
-  exception_taken <= not stall and (decode_exception or to_std_logic(exception_cause /= CSR_CAUSE_NONE));
+  exception_taken <= not stall and not internal_stall and (decode_exception or to_std_logic(exception_cause /= CSR_CAUSE_NONE));   -----not internal stall added
 
   irq_asserted <= to_std_logic(ie_in = '1' and (irq and mie(31 downto 24)) /= x"00");
   ----dmem_address <= fp_mem_addr when (mem_op = MEMOP_TYPE_LOAD_FP or mem_op = MEMOP_TYPE_STORE_FP) else (others => '0');
@@ -309,32 +314,16 @@ begin
   alu_op_out <= alu_op;
   alu_y_out <= alu_y;
   
-  alu_x <= alu_x_mux_o when stall ='0' else alu_x_reg;
-  alu_y <= alu_y_mux_o when stall ='0' else alu_y_reg;
+  alu_x <= alu_x_mux_o when (stall ='0' and internal_stall = '0') else alu_x_reg;   -------internal stall added
+  alu_y <= alu_y_mux_o when (stall ='0' and internal_stall = '0') else alu_y_reg;   -------internal stall added
 
 
  --fp_alu_x <= fp_alu_x_mux_o when (stall ='0' or internal_stall = '0') else fp_alu_x_reg;
  --fp_alu_y <= fp_alu_y_mux_o when (stall ='0' or internal_stall = '0') else fp_alu_y_reg;
 
 
-  ---fp_mem_addr <= std_logic_vector(unsigned(alu_x) + unsigned(alu_y));
+ 
 
-
-  -- Calculate address  rs1 + imm for FP load/store, 
---fp_mem_addr <= std_logic_vector(
---                  unsigned(rs1_forwarded) + 
---                  unsigned(immediate_in)  -- sign-extend if needed
---                );
-
-
--- Extract immediate for FLW/FSW from instruction
-----fp_immediate <= (31 downto 12 => instruction(31)) & instruction(31 downto 20)
-----                  when (instruction(6 downto 2) = b"00001") else  -- FLW: I-type
-----                (31 downto 12 => instruction(31)) & instruction(31 downto 25) & instruction(11 downto 7)
-----                  when (instruction(6 downto 2) = b"01001") else  -- FSW: S-type
-----               (others => '0');  -- For integers, not used
-----
-----fp_mem_addr <= std_logic_vector(unsigned(rs1_forwarded) + unsigned(fp_immediate));
 
 
 
@@ -352,6 +341,7 @@ begin
         count_instruction_out <= '0';
       elsif stall = '1' or internal_stall = '1' then
         csr_write <= CSR_WRITE_NONE;
+        ----frd_write_out <= '0'; 
       elsif stall = '0' and internal_stall = '0' then   ---or internal_stall = '0'
 
         pc <= pc_in;
@@ -566,14 +556,14 @@ end process;
 
 
     ---- added for FPU branch comparisons, will check later
-   fp_branch_comparator : entity work.fp_pp_comparator   
-    port map(
-      funct3 => funct3,
-      alu_op_in => alu_op,
-      frs1 => frs1_forwarded,
-      frs2 => frs2_forwarded,
-      result => fp_branch_condition
-    );
+  fp_branch_comparator : entity work.fp_pp_comparator   
+   port map(
+     funct3 => funct3,
+     alu_op_in => alu_op,
+     frs1 => frs1_forwarded,
+     frs2 => frs2_forwarded,
+     result => fp_branch_condition
+   );
 
 
      ---- prob not needed for fpu

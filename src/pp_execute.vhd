@@ -470,13 +470,13 @@ begin
 
   
 frd_data_out <= frd_data_stg3; 
-  rm <= instruction_in(14 downto 12) when valid_in = '1' else "000";
+rm <= instruction_in(14 downto 12) when valid_in = '1' else "000";
 
   update_address : process (clk)
   begin
     if rising_edge(clk) then
 
-      if stall_exe_stg1 = '0' then
+      if stall_exe_stg1 = '0' and internal_stall = '0' then   -----internal stall added
         rs1_addr <= rs1_addr_in;
         rs2_addr <= rs2_addr_in;
         frs1_addr <= frs1_addr_in;  ---- for fpu
@@ -530,9 +530,9 @@ frd_data_out <= frd_data_stg3;
       rs1_forwarded => rs1_forwarded,
       rs2_forwarded => rs2_forwarded,
 
--------these are the inputs into fpu_stg1 
-      frs1_forwarded => frs1_forwarded_reg,  ---- for fpu  
-      frs2_forwarded => frs2_forwarded_reg,  ---- for fpu
+      ---these are the inputs into fpu_stg1 
+      frs1_forwarded => frs1_forwarded,  ---- for fpu  
+      frs2_forwarded => frs2_forwarded,  ---- for fpu
 
       instruction_in => instruction_in, ---- from decode stage
 

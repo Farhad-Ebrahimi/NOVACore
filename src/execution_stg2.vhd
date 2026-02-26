@@ -306,6 +306,7 @@ begin
     if rising_edge(clk) then
       if reset = '1' then
         rd_write_out          <= '0';
+        frd_write_out         <= '0';  ----feb2026
         branch                <= BRANCH_NONE;
         csr_write             <= CSR_WRITE_NONE;
         mem_op                <= MEMOP_TYPE_NONE;

@@ -80,7 +80,7 @@ begin
 		);
 
 	--! @brief Decodes instructions.
-	decode_ctrl: process(opcode, funct3, funct12)
+	decode_ctrl: process(opcode, funct3, funct12 , funct7)
 	begin
 		-- Initialize both write signals to '0' (mutually exclusive) ----fpu 2026
 		--rd_write <= '0';      -- Default: no integer register write
@@ -148,11 +148,44 @@ begin
 				branch <= BRANCH_NONE;
 				frd_write <= '0';
 			when b"10100" => -- Opcode 0x53 (Floating-point) ------dec-2025
-    			frd_write <= '1';
-    			exception <= '0';
-				rd_write <= '0';
-    			exception_cause <= CSR_CAUSE_NONE;  ----fpu 2025
-    			branch <= BRANCH_NONE;
+			    case funct7 is
+					when b"0000000" | b"0000100" | b"0001000" | b"0001100" | b"1111000"  =>  --add,sub,mul,div, fmv.w.x,fcvt.sw,fcvt.s.wu write to frs
+    					frd_write <= '1';
+    					exception <= '0';
+						rd_write  <= '0';
+    					exception_cause <= CSR_CAUSE_NONE;  ----fpu 2025
+    					branch <= BRANCH_NONE;
+					when b"1110000"  | b"1100000" => ---- fmv.x.w, comparisons, fcvt.w.s,fcvt.wu.s
+						frd_write <= '0';
+						rd_write <= '1';
+						exception <= '0';
+						exception_cause <= CSR_CAUSE_NONE;
+						branch <= BRANCH_NONE;
+					when  b"1010000" =>
+					    case funct3 is
+					        when b"000" | b"001" | b"010" =>
+								frd_write <= '0';
+								rd_write <= '1';
+								exception <= '0';
+								exception_cause <= CSR_CAUSE_NONE;
+								branch <= BRANCH_NONE;
+							when others =>
+								frd_write <= '0';
+								rd_write <= '0';
+								exception <= '1';
+								exception_cause <= CSR_CAUSE_INVALID_INSTR;
+								branch <= BRANCH_NONE;
+						end case;
+							
+
+					when others =>
+						frd_write <= '0';
+						rd_write <= '0';
+						exception <= '1';
+						exception_cause <= CSR_CAUSE_INVALID_INSTR;
+						branch <= BRANCH_NONE;
+				end case;
+					  
 			when b"00001" => -- Floating-point load (FLW)
 				frd_write <= '1';
 				rd_write <= '0';

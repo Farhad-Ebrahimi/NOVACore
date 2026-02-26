@@ -249,7 +249,8 @@ begin
 	stall_id <= stall_ex;   ---internal stall added. 
 	stall_ex <= hazard_detected or stall_mem ;--or internal_stall; --or internal_stall; --- internal stall added.
 	stall_mem <= to_std_logic(memop_is_load(mem_mem_op) and (dmem_read_ack_r = '0'))
-		or to_std_logic((mem_mem_op = MEMOP_TYPE_STORE)  and (dmem_write_ack_r = '0'));   ----or (mem_mem_op = MEMOP_TYPE_STORE_FP))
+		or to_std_logic((mem_mem_op = MEMOP_TYPE_STORE)  and (dmem_write_ack_r = '0'))
+		or to_std_logic((mem_mem_op = MEMOP_TYPE_STORE_FP) and (dmem_write_ack_r = '0'));   ----or (mem_mem_op = MEMOP_TYPE_STORE_FP)
 	
 	-- Combined stall signals for Execute stages (must include internal_stall for DIV)
 	---stall_exe_stg1_combined <= stall_ex or internal_stall;---not used
@@ -680,7 +681,7 @@ begin
 		);
 		
 		
-   --  delibrate stall because of Stor instruction ----- excluded fsw
+   --  delibrate stall because of Stor instruction ----- excluded fsw-----added them back again 
     stall_proc : process(clk)
     begin
         if rising_edge(clk) then
@@ -695,7 +696,7 @@ begin
                 dmem_read_ack_r <= dmem_read_ack;
                 dmem_write_ack_r  <= dmem_write_ack;
                 dmem_data_in_r <= dmem_data_in;   -----comes from upper module and stored here.
-                if (id_mem_op = MEMOP_TYPE_STORE ) and stall_counter = 0 then ----or id_mem_op = MEMOP_TYPE_STORE_FP
+                if (id_mem_op = MEMOP_TYPE_STORE or id_mem_op = MEMOP_TYPE_STORE_FP) and stall_counter = 0 then ----or id_mem_op = MEMOP_TYPE_STORE_FP
                     delibrate_stall <= '1';
                     stall_counter <= 1;
                 elsif stall_counter = 1 then

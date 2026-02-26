@@ -104,15 +104,20 @@ begin
 				instruction <= RISCV_NOP;
 				pc <= RESET_ADDRESS;
 				count_instruction <= '0';
+				decode_valid <= '0';
 			elsif stall = '1' or stall_fpu = '1' then   -----or stall_fpu = '1'so when division is detected we hold the pc and stall deocde
 				count_instruction <= '0'; -- hold PC and instruction
+				decode_valid <= '0';
 			elsif flush = '1' or instruction_ready = '0' or insert_nop = '1' then -----or insert_nop = '1'  then ----or insert_nop = '1'  then    ---- or insert_nop = '1'
 				instruction <= RISCV_NOP;
 				count_instruction <= '0';
+				decode_valid <= '0';
+				
 			else
 				instruction <= instruction_data;
 				count_instruction <= instruction_count;
 				pc <= instruction_address;
+				decode_valid <= instruction_ready;
 			end if;
 		end if;
 	end process get_instruction;
@@ -120,9 +125,10 @@ begin
 -- Extract register addresses from the instruction word:
 	-- Integer rs1 (exclude all FP instructions)
 rs1_addr <= instruction(19 downto 15)
-  when instruction(6 downto 2) /= b"10100"     
+  when instruction(6 downto 2) /= b"10100"
+    or (instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"1111000")  -- FMV.W.X
+    or (instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"1101000")  -- FCVT.S.W (int→float)
   else (others => '0');
-
 -- Integer rs2
 rs2_addr <= instruction(24 downto 20)
   when instruction(6 downto 2) /= b"10100" and
@@ -131,17 +137,39 @@ rs2_addr <= instruction(24 downto 20)
   else (others => '0');
 
 -- Integer rd
+-- Integer rd
 rd_addr <= instruction(11 downto 7)
-  when instruction(6 downto 2) /= b"10100" and
-       instruction(6 downto 2) /= b"00001" and
-       instruction(6 downto 2) /= b"01001"
-  else (others => '0');
+    when (
+        -- Standard Integer Instructions (Exclude OP-FP, FLW, FSW)
+        (instruction(6 downto 2) /= b"10100" and -- Not FP Arithmetic
+         instruction(6 downto 2) /= b"00001" and -- Not FLW
+         instruction(6 downto 2) /= b"01001")    -- Not FSW
+    ) or (
+        -- Specific FP instructions that write to Integer Registers
+        instruction(6 downto 2) = b"10100" and (
+            instruction(31 downto 25) = b"1110000" or -- FMV.X.W move from float to int
+            instruction(31 downto 25) = b"1010000" or -- FEQ, FLT, FLE
+            instruction(31 downto 25) = b"1100000"    -- FCVT.W.S  float to int
+       											 )
+    	)
+    else (others => '0');
 
+-- Integer rd
 rd_addr_reg <= instruction(11 downto 7)
-  when instruction(6 downto 2) /= b"10100" and
-       instruction(6 downto 2) /= b"00001" and
-       instruction(6 downto 2) /= b"01001"
-  else (others => '0');
+    when (
+        -- Standard Integer Instructions (Exclude OP-FP, FLW, FSW)
+        (instruction(6 downto 2) /= b"10100" and -- Not FP Arithmetic
+         instruction(6 downto 2) /= b"00001" and -- Not FLW
+         instruction(6 downto 2) /= b"01001")    -- Not FSW
+    ) or (
+        -- Specific FP instructions that write to Integer Registers
+        instruction(6 downto 2) = b"10100" and (
+            instruction(31 downto 25) = b"1110000" or -- FMV.X.W
+            instruction(31 downto 25) = b"1010000" or -- FEQ, FLT, FLE
+            instruction(31 downto 25) = b"1100000"    -- FCVT.W.S
+        										)
+    )
+    else (others => '0');
 
 	---------For floating pont operations------------
 		-- Extract register addresses from the instruction word:
@@ -153,15 +181,35 @@ rd_addr_reg <= instruction(11 downto 7)
 		or instruction(6 downto 2) = b"01001" 
 		else (others => '0');  --source register 2
 	frd_addr  <= instruction(11 downto  7) 
-		when (instruction(6 downto 2) = b"10100")  -----and instruction(31) = '0')  
+		when
+		-- (instruction(6 downto 2) = b"10100")  -----and instruction(31) = '0')  
+		--or
+    	(instruction(6 downto 2) = b"00001" )
+		or 
+        -- Specific FP instructions that write to Integer Registers
+        (instruction(6 downto 2) = b"10100" and instruction(31) = '0')   -----fadd,sub,mul,div
 		or
-    	instruction(6 downto 2) = b"00001" 
+        (instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"1101000") 
+		or 
+        (instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"1111000")    
+        										
+			
 		else (others => '0');   --destination register
-	frd_addr_reg <= instruction(11 downto  7) 
-		when (instruction(6 downto 2) = b"10100")  -----and instruction(31) = '0')  
+	frd_addr_reg  <= instruction(11 downto  7) 
+		when
+		-- (instruction(6 downto 2) = b"10100")  -----and instruction(31) = '0')  
+		--or
+    	(instruction(6 downto 2) = b"00001" )
+		or 
+        -- Specific FP instructions that write to Integer Registers
+        (instruction(6 downto 2) = b"10100" and instruction(31) = '0')
 		or
-       instruction(6 downto 2) = b"00001" 
-	   else (others => '0');   --destination register
+        (instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"1101000") 
+		or 
+        (instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"1111000")    
+        										
+			
+		else (others => '0');   --destination register
 
 	----------------------------------------------------
 	-- Extract the shamt value from the instruction word:
@@ -220,7 +268,7 @@ begin
         if reset = '1' then
             insert_nop  <= '0';
             nop_trigger <= '0';
-        elsif (stall = '0' ) then   ----and stall_fpu = '0'
+        elsif (stall = '0' and stall_fpu = '0' ) then   ----and stall_fpu = '0'
             if is_csd_op(alu_op_reg) and rd_write_reg = '1' and  rd_addr_reg/=b"00000"  and nop_trigger = '0' then
                 insert_nop  <= '1';
                 nop_trigger <= '1';
@@ -234,11 +282,11 @@ begin
 end process;
     
     insert_nop_id <= insert_nop;
-	decode_valid <= instruction_ready when ((stall_fpu = '0') and (stall = '0')) and flush = '0' else '0'; ---(stall_fpu = '0') or ---when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0';
+	---decode_valid <= instruction_ready when ((stall_fpu = '0') and (stall = '0')) and flush = '0' else '0'; ---(stall_fpu = '0') or ---when ((stall_fpu = '0') or (stall = '0')) and flush = '0' else '0';
 	instruction_out <= instruction;   ----32 bit riscv intruction
 
 
 	-- DIV Detection (combinational)  only for fpus
-	div_detected_out <= '1' when  instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"0001100" else '0';  ---and (decode_valid_out = '1')
+	div_detected_out <= '1' when  instruction(6 downto 2) = b"10100" and instruction(31 downto 25) = b"0001100" and (decode_valid = '1') else '0';  ---and (decode_valid_out = '1')
 
 end architecture behaviour;

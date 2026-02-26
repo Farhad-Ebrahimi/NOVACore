@@ -166,30 +166,42 @@ begin
 						alu_op <= ALU_FMUL;  	----fpu 2025
 					when b"0001100" =>
 						alu_op <= ALU_FDIV;  	----fpu 2025
+		--Move the single-precision value in floating-point register rs1 
+		----represented in IEEE 754-2008 encoding to the lower 32 bits of integer register rd.
 					when b"1110000" =>
-					     alu_op <= ALU_FMVXW;  	----fpu 2025 (FP register → Integer register)
+					     alu_op <= ALU_FMVXW;  	----fpu 2025 (FP register → Integer register) 
 					when b"1111000" =>
 					     alu_op <= ALU_FMVWX;  	----fpu 2025 (Integer register → FP register)
 					when b"1010000" =>
 					     alu_op <= ALU_Comp;  	----fpu 2025
+						 case funct3 is
+							when b"010" =>
+								alu_op <= ALU_FEQ;  	----fpu 2025 (FEQ.S)
+							when b"001" =>
+								alu_op <= ALU_FLT;  	----fpu 2025 (FLT.S)
+							when b"000" =>
+								alu_op <= ALU_FLE;  	----fpu 2025 (FLE.S)
+							when others =>
+								alu_op <= ALU_INVALID;
+						 end case;
 					when b"1100000" =>
 					-- FCVT: Check rs2 to distinguish signed vs unsigned
-					--if rs2 = b"00000" then
+					if rs2 = b"00000" then
 						alu_op <= ALU_FCVT_W;   -- FCVT.W.S (FP → signed int)
-					--elsif rs2 = b"00001" then
-						--alu_op <= ALU_FCVT_WU;  -- FCVT.WU.S (FP → unsigned int)
-					--else
-						--alu_op <= ALU_INVALID;
-					--end if;				
+					elsif rs2 = b"00001" then
+						alu_op <= ALU_FCVT_WU;  -- FCVT.WU.S (FP → unsigned int)
+					else
+						alu_op <= ALU_INVALID;
+					end if;				
 					when b"1101000" =>
 				-- FCVT.S: Check rs2 to distinguish signed vs unsigned (int → FP)
-				--if rs2 = b"00000" then
+				if rs2 = b"00000" then
 					alu_op <= ALU_FCVT_S_W;  -- FCVT.S.W (signed int → FP)
-				--elsif rs2 = b"00001" then
-				--	alu_op <= ALU_FCVT_S_WU; -- FCVT.S.WU (unsigned int → FP)
-				--else
-				--	alu_op <= ALU_INVALID;
-				--end if;					
+				elsif rs2 = b"00001" then
+					alu_op <= ALU_FCVT_S_WU; -- FCVT.S.WU (unsigned int → FP)
+				else
+					alu_op <= ALU_INVALID;
+				end if;					
 				when others =>
 						alu_op <= ALU_INVALID;
 				end case;
