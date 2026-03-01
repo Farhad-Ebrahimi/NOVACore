@@ -1,0 +1,89 @@
+
+Discarded input sections
+
+ .text          0x00000000        0x0 fadd_s.o
+ .data          0x00000000        0x0 fadd_s.o
+ .bss           0x00000000        0x0 fadd_s.o
+ .text.test_fpu_logic_mul
+                0x00000000       0x34 fadd_s.o
+ .text.test_fpu_logic_add
+                0x00000000       0x34 fadd_s.o
+ .text.test_fpu_logic_sub
+                0x00000000       0x34 fadd_s.o
+ .comment       0x00000000       0x13 fadd_s.o
+ .text          0x00000000        0x0 start.o
+ .data          0x00000000        0x0 start.o
+ .bss           0x00000000        0x0 start.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+RAM              0x00000000         0x00080000         xrw
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+
+.text           0x00000000      0x208
+ *(.init)
+ .init          0x00000000      0x158 start.o
+                0x00000000                _start
+                0x00000044                _machine_exception_handler
+                0x00000158                        __text_begin = .
+ *(.text*)
+ .text.exception_handler
+                0x00000158       0x24 fadd_s.o
+                0x00000158                exception_handler
+ .text.startup.main
+                0x0000017c       0x8c fadd_s.o
+                0x0000017c                main
+                0x00000208                        __text_end = .
+
+.rela.dyn       0x00000208        0x0
+ .rela.init     0x00000208        0x0 fadd_s.o
+
+.rodata         0x00000208        0x0
+                0x00000208                        __rodata_begin = .
+ *(.rodata*)
+                0x00000208                        __rodata_end = .
+
+.data           0x00000208        0x0
+                0x00000208                        __data_begin = .
+ *(.data*)
+ *(.eh_frame*)
+                0x00000208                        __data_end = .
+
+.bss            0x00000208        0x0
+                0x00000208                        __bss_begin = .
+ *(.bss*)
+ *(.sbss*)
+                0x00000208                        __bss_end = ALIGN (0x4)
+                0x00080000                        __stack_top = 0x80000
+
+/DISCARD/
+ *(.comment)
+LOAD fadd_s.o
+LOAD start.o
+LOAD C:/msys64/mingw64/bin/../lib/gcc/riscv64-unknown-elf/15.1.0\libgcc.a
+START GROUP
+LOAD C:/msys64/mingw64/bin/../lib/gcc/riscv64-unknown-elf/15.1.0/../../../../riscv64-unknown-elf/lib\libc.a
+END GROUP
+LOAD C:/msys64/mingw64/bin/../lib/gcc/riscv64-unknown-elf/15.1.0\libgcc.a
+START GROUP
+LOAD C:/msys64/mingw64/bin/../lib/gcc/riscv64-unknown-elf/15.1.0\libgcc.a
+LOAD C:/msys64/mingw64/bin/../lib/gcc/riscv64-unknown-elf/15.1.0/../../../../riscv64-unknown-elf/lib\libc.a
+LOAD C:/msys64/mingw64/bin/../lib/gcc/riscv64-unknown-elf/15.1.0/../../../../riscv64-unknown-elf/lib\libnosys.a
+END GROUP
+OUTPUT(fadd_s.elf elf32-littleriscv)
+
+.note.GNU-stack
+                0x00000000        0x0
+ .note.GNU-stack
+                0x00000000        0x0 fadd_s.o
+
+.riscv.attributes
+                0x00000000       0x54
+ .riscv.attributes
+                0x00000000       0x50 fadd_s.o
+ .riscv.attributes
+                0x00000050       0x52 start.o

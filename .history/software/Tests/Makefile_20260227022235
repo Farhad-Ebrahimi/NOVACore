@@ -1,0 +1,125 @@
+.PHONY: all clean
+
+# --------------------------------------------------
+# Project directories
+# --------------------------------------------------
+PREFIX_DIR := ../..
+
+# --------------------------------------------------
+# Output files
+# --------------------------------------------------
+TARGET      := fadd_s
+ELF         := $(TARGET).elf
+BIN         := $(TARGET).bin
+COE         := $(TARGET).coe
+MAP         := $(TARGET).map
+ASM         := $(TARGET).s
+
+# --------------------------------------------------
+# Toolchain
+# --------------------------------------------------
+CROSS       ?= riscv64-unknown-elf
+CC          := $(CROSS)-gcc
+OBJCOPY     := $(CROSS)-objcopy
+SIZE        := $(CROSS)-size
+HEXDUMP     ?= hexdump
+
+# --------------------------------------------------
+# Architecture (MUST match multilib exactly)
+# Your toolchain supports: rv32imafc/ilp32f
+# --------------------------------------------------
+ARCH        := rv32imafc
+ABI         := ilp32f
+
+# --------------------------------------------------
+# Linker script
+# --------------------------------------------------
+LINKER      := $(PREFIX_DIR)/software/potato.ld
+
+# --------------------------------------------------
+# Compiler flags
+# --------------------------------------------------
+CFLAGS := \
+	-march=$(ARCH) \
+	-mabi=$(ABI) \
+	-Os \
+	-ffreestanding \
+	-fno-builtin \
+	-fomit-frame-pointer \
+	-ffunction-sections \
+	-fdata-sections \
+	-std=gnu99 \
+	-Wall \
+	-Werror=implicit-function-declaration \
+	-I$(PREFIX_DIR) \
+	-I$(PREFIX_DIR)/libsoc
+
+# --------------------------------------------------
+# Linker flags
+# --------------------------------------------------
+LDFLAGS := \
+	-march=$(ARCH) \
+	-mabi=$(ABI) \
+	-nostartfiles \
+	-Wl,-T$(LINKER) \
+	-Wl,--gc-sections \
+	-Wl,--no-relax \
+	--specs=nosys.specs \
+	-Wl,--Map=$(MAP)
+
+# --------------------------------------------------
+# Source files
+# --------------------------------------------------
+SRCS := \
+	fadd_s.c \
+	$(PREFIX_DIR)/software/start.S
+
+OBJS := $(SRCS:.c=.o)
+OBJS := $(OBJS:.S=.o)
+
+# --------------------------------------------------
+# Default target
+# --------------------------------------------------
+all: $(ELF) $(BIN) $(ASM) $(COE)
+
+# --------------------------------------------------
+# ELF
+# --------------------------------------------------
+$(ELF): $(OBJS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJS)
+	$(SIZE) $@
+
+# --------------------------------------------------
+# Binary
+# --------------------------------------------------
+$(BIN): $(ELF)
+	$(OBJCOPY) -O binary $< $@
+
+# --------------------------------------------------
+# Assembly output (for inspection)
+# --------------------------------------------------
+$(ASM): fadd_s.c
+	$(CC) $(CFLAGS) -S -o $@ $<
+
+# --------------------------------------------------
+# Compile rules
+# --------------------------------------------------
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.o: %.S
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# --------------------------------------------------
+# COE file for Vivado BRAM
+# --------------------------------------------------
+$(COE): $(BIN)
+	@echo "memory_initialization_radix=16;" > $@
+	@echo "memory_initialization_vector=" >> $@
+	@$(HEXDUMP) -v -e '1/4 "%08x,\n"' $< | sed '$$s/,$$/;/' >> $@
+
+# --------------------------------------------------
+# Clean
+# --------------------------------------------------
+clean:
+	rm -f $(OBJS) $(ELF) $(BIN) $(COE) $(MAP) $(ASM)

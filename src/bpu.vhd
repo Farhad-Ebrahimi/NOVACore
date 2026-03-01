@@ -11,6 +11,7 @@ entity bpu is
         clk : in std_logic;
         reset : in std_logic;
         stall : in std_logic;
+        stall_fpu : in std_logic;
         jump_inst_id : in std_logic;
         jump_inst_ie : in std_logic;
         actual_taken : in std_logic;
@@ -83,7 +84,7 @@ begin
                 next_address <= (others => '0');
                 next_history <= '0';
             else
-                if stall = '0' then
+                if stall = '0' and stall_fpu = '0' then
                     if jump_inst_ie = '1' and wrong_prdt = '1' then
                         if btb_valid(index_ie) = '1' and btb_tag(index_ie) = pc_ie(31 downto INDEX_WIDTH + 2) then
                             btb_taken(index_ie) <= actual_taken;
@@ -115,7 +116,7 @@ begin
                 prdt_addr <= (others => '0');
             else
                
-                if stall = '0' then
+                if stall = '0' and stall_fpu = '0' then
                 branch_history <= '0';
                 prdt_addr <= (others => '0');
                 if jump_inst_id = '1'and wrong_prdt = '0' then

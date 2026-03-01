@@ -1,0 +1,47 @@
+# ------------------------------------------------------------
+# fadd_s – Potato test application
+# ------------------------------------------------------------
+
+.PHONY: all clean
+
+include ../common.mk
+
+# ------------------------------------------------------------
+# Linker script
+# ------------------------------------------------------------
+LINKER_SCRIPT = potato.ld
+
+TARGET_LDFLAGS += \
+	-Wl,-T$(LINKER_SCRIPT) \
+	-Wl,--Map,fadd_s.map
+
+# ------------------------------------------------------------
+# Objects
+# ------------------------------------------------------------
+OBJECTS := fadd_s.o start.o
+
+# ------------------------------------------------------------
+# Targets
+# ------------------------------------------------------------
+all: fadd_s.elf fadd_s.bin fadd_s.coe
+
+fadd_s.elf: $(OBJECTS) $(LINKER_SCRIPT)
+	$(TARGET_LD) -o $@ $(TARGET_LDFLAGS) $(OBJECTS)
+	$(TARGET_SIZE) $@
+
+# ------------------------------------------------------------
+# Object rules
+# ------------------------------------------------------------
+
+fadd_s.o: fadd_s.c ../../potato.h
+	$(TARGET_CC) -c -o $@ $(TARGET_CFLAGS) $<
+
+start.o: ../start.S
+	$(TARGET_CC) -DCOPY_DATA_TO_RAM -c -o $@ $(TARGET_CFLAGS) $<
+
+# ------------------------------------------------------------
+# Clean
+# ------------------------------------------------------------
+clean:
+	-$(RM) $(OBJECTS)
+	-$(RM) fadd_s.elf fadd_s.bin fadd_s.coe fadd_s.map

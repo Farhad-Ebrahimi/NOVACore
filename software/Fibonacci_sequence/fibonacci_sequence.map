@@ -1,0 +1,4 @@
+Archive member included to satisfy reference by file (symbol)
+
+C:/msys64/mingw64/bin/../lib/gcc/riscv64-unknown-elf/15.1.0\libgcc.a(div.o)
+                              fibonacci_sequence.o (__modsi3)

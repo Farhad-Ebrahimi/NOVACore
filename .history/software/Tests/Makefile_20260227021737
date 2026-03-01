@@ -1,0 +1,113 @@
+.PHONY: all clean
+
+# -------------------------------------------------
+# Directories
+# -------------------------------------------------
+Prefix_dir := ../..
+
+BINS := fadd_s.bin
+COES := $(BINS:.bin=.coe)
+
+# -------------------------------------------------
+# Toolchain
+# -------------------------------------------------
+TARGET_PREFIX ?= riscv64-unknown-elf
+
+CC       := $(TARGET_PREFIX)-gcc
+OBJCOPY  := $(TARGET_PREFIX)-objcopy
+SIZE     := $(TARGET_PREFIX)-size
+
+HEXDUMP ?= hexdump
+
+# -------------------------------------------------
+# Linker script
+# -------------------------------------------------
+LINKER_SCRIPT := $(Prefix_dir)/software/potato.ld
+
+# -------------------------------------------------
+# Compiler flags (RV32IMF)
+# -------------------------------------------------
+CFLAGS := \
+	-march=rv32imf_zicsr \
+	-mabi=ilp32f \
+	-mno-div \
+	-Os \
+	-ffreestanding \
+	-fno-builtin \
+	-fomit-frame-pointer \
+	-ffunction-sections \
+	-fdata-sections \
+	-std=gnu99 \
+	-ffp-contract=off \
+	-fno-strict-aliasing \
+	-Wall \
+	-Werror=implicit-function-declaration \
+	-I$(Prefix_dir) \
+	-I$(Prefix_dir)/libsoc
+
+# -------------------------------------------------
+# Linker flags
+# -------------------------------------------------
+LDFLAGS := \
+	-march=rv32imf_zicsr \
+	-mabi=ilp32f \
+	-mno-div \
+	-nostartfiles \
+	-Wl,-T$(LINKER_SCRIPT) \
+	-Wl,--gc-sections \
+	-Wl,--no-relax \
+	-Wl,-m,elf32lriscv \
+	--specs=nosys.specs \
+	-Wl,--Map,fadd_s.map
+
+# -------------------------------------------------
+# Source / Objects
+# -------------------------------------------------
+OBJECTS := fadd_s.o start.o
+
+# -------------------------------------------------
+# Default target
+# -------------------------------------------------
+all: fadd_s.elf fadd_s.bin fadd_s.s $(COES)
+
+# -------------------------------------------------
+# ELF build
+# -------------------------------------------------
+fadd_s.elf: $(OBJECTS)
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS)
+	$(SIZE) $@
+
+# -------------------------------------------------
+# Binary from ELF
+# -------------------------------------------------
+%.bin: %.elf
+	$(OBJCOPY) -O binary $< $@
+
+# -------------------------------------------------
+# Assembly output
+# -------------------------------------------------
+fadd_s.s: fadd_s.c
+	$(CC) $(CFLAGS) -S -o $@ $<
+
+# -------------------------------------------------
+# Object files
+# -------------------------------------------------
+fadd_s.o: fadd_s.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+start.o: $(Prefix_dir)/software/start.S
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# -------------------------------------------------
+# Generate COE file (for FPGA BRAM)
+# -------------------------------------------------
+%.coe: %.bin
+	@echo "memory_initialization_radix=16;" > $@
+	@echo "memory_initialization_vector=" >> $@
+	@$(HEXDUMP) -v -e '1/4 "%08x,\n"' $< | sed '$$s/,$$/;/' >> $@
+
+# -------------------------------------------------
+# Clean
+# -------------------------------------------------
+clean:
+	rm -f $(OBJECTS) fadd_s.elf fadd_s.bin fadd_s.coe fadd_s.map fadd_s.s

@@ -1,0 +1,88 @@
+.PHONY: all clean
+
+# Directories
+Prefix_dir := ../..
+
+BINS = fadd_s.bin 
+COES = $(BINS:.bin=.coe)
+
+# Cross compiler toolchain
+TARGET_PREFIX ?= riscv64-unknown-elf
+TARGET_CC := $(TARGET_PREFIX)-gcc
+TARGET_LD := $(TARGET_PREFIX)-gcc
+TARGET_OBJCOPY := $(TARGET_PREFIX)-objcopy
+TARGET_SIZE := $(TARGET_PREFIX)-size
+HEXDUMP ?= hexdump
+
+# Linker script
+LINKER_SCRIPT := $(Prefix_dir)/software/potato.ld
+
+# Compiler flags
+TARGET_CFLAGS += \
+	-march=rv32imf_zicsr -mabi=ilp32 -mno-div -Wall -Os \
+	-ffreestanding -fno-builtin -fomit-frame-pointer \
+	-ffunction-sections -fdata-sections \
+	-std=gnu99 \
+	-I$(Prefix_dir) \
+	-I$(Prefix_dir)/libsoc \
+	-ffp-contract=off \
+    -fno-strict-aliasing \
+	-Wall -Werror=implicit-function-declaration
+
+# Linker flags
+TARGET_LDFLAGS += \
+	-march=rv32im_zicsr -mno-div -nostartfiles \
+	-L$(Prefix_dir)/libsoc \
+	-Wl,-T$(LINKER_SCRIPT) \
+	-Wl,--gc-sections \
+	-Wl,--no-relax \
+	-Wl,-m,elf32lriscv \
+	--specs=nosys.specs \
+	-Wl,--Map,fadd_s.map
+
+OBJECTS := fadd_s.o start.o func.o
+
+# Default target
+all: fadd_s.elf fadd_s.bin fadd_s.s func.s $(COES)
+
+# ELF build
+fadd_s.elf: $(OBJECTS) $(LINKER_SCRIPT)
+	$(TARGET_CC) $(TARGET_LDFLAGS) -o $@ $(OBJECTS) -lm
+	$(TARGET_SIZE) $@
+
+# Binary from ELF
+%.bin: %.elf
+	$(TARGET_OBJCOPY) -j .text -j .data -j .rodata -O binary $< $@
+
+# Human-readable assembly
+fadd_s.s: fadd_s.c func.h
+	$(TARGET_CC) $(TARGET_CFLAGS) -S -o $@ $<
+func.s: func.c 
+	$(TARGET_CC) $(TARGET_CFLAGS) -S -o $@ $<
+
+# Object files
+fadd_s.o: fadd_s.c func.h \
+	$(Prefix_dir)/platform.h \
+	$(Prefix_dir)/potato.h \
+	$(Prefix_dir)/libsoc/timer.h \
+	$(Prefix_dir)/libsoc/uart.h
+	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
+
+### Object files
+##func.o: func.c \
+##	$(Prefix_dir)/platform.h \
+##	$(Prefix_dir)/potato.h \
+##	$(Prefix_dir)/libsoc/timer.h \
+##	$(Prefix_dir)/libsoc/uart.h
+##	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
+
+start.o: $(Prefix_dir)/software/start.S $(Prefix_dir)/platform.h
+	$(TARGET_CC) $(TARGET_CFLAGS) -c -o $@ $<
+
+# Generate COE file for FPGA BRAM
+%.coe: %.bin
+	@$(HEXDUMP) -v -e '1/4 "%08x,\n"' $< | sed '$$s/,$$/;/' >> $@
+
+# Clean target
+clean:
+	$(RM) $(OBJECTS) fadd_s.elf fadd_s.bin fadd_s.coe fadd_s.map fadd_s.s 
