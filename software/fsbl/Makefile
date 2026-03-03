@@ -11,7 +11,7 @@ TARGET_LDFLAGS += -Wl,-T$(LINKER_SCRIPT) -Wl,--Map=fsbl.map
 
 OBJECTS := fsbl.o start.o
 
-all: fsbl.elf fsbl.bin fsbl.coe
+all: fsbl.elf fsbl.bin fsbl.coe fsbl.s
 
 fsbl.elf: $(OBJECTS) $(LINKER_SCRIPT)
 	$(TARGET_LD) -o fsbl.elf $(TARGET_LDFLAGS) $(OBJECTS)
@@ -20,6 +20,10 @@ fsbl.elf: $(OBJECTS) $(LINKER_SCRIPT)
 clean:
 	-$(RM) $(OBJECTS)
 	-$(RM) fsbl.elf fsbl.bin fsbl.coe fsbl.map
+
+# human readable asembly .s file for debugging and inspection purposes:
+fsbl.s: fsbl.c ../../potato.h $(LINKER_SCRIPT)	
+	$(TARGET_CC) -S $(TARGET_CFLAGS) $< -o $@
 
 # Object file rules:
 

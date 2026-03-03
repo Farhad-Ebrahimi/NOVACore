@@ -144,8 +144,8 @@ set files [list \
  [file normalize "${origin_dir}/../src/fpu_stage1.vhd"]\
  [file normalize "${origin_dir}/../src/fpu_stage2.vhd"]\
  [file normalize "${origin_dir}/../src/fpu_stage3.vhd"]\
-
-
+ [file normalize "${origin_dir}/../src/pp_int_2_float.vhd"]\
+ [file normalize "${origin_dir}/../src/pp_float_2_int.vhd"]\
 ]
 add_files -fileset sources_1 $files
 

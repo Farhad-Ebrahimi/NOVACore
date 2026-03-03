@@ -10,7 +10,13 @@ TARGET_LDFLAGS += -Wl,-T../potato.ld -Wl,--Map,fadd_s.map
 OBJECTS := fadd_s.o start.o
 LINKER_SCRIPT := ../potato.ld
 
-all: fadd_s.elf fadd_s.bin fadd_s.coe fadd_s.s
+all: fadd_s.elf fadd_s.bin fadd_s.coe fadd_s.s func.s
+
+
+# human readable assembly output for debugging
+
+func.s: func.c
+	$(TARGET_CC) $(TARGET_CFLAGS) -O3 -S -o $@ $<
 
 fadd_s.s: fadd_s.c
 	$(TARGET_CC) $(TARGET_CFLAGS) -O3 -S -o $@ $<
@@ -21,7 +27,7 @@ fadd_s.elf: $(OBJECTS) $(LINKER_SCRIPT)
 
 clean:
 	-$(RM) $(OBJECTS)
-	-$(RM) fadd_s.elf fadd_s.bin fadd_s.coe fadd_s.map fadd_s.s
+	-$(RM) fadd_s.elf fadd_s.bin fadd_s.coe fadd_s.map fadd_s.s func.s
 
 # Object file rules:
 

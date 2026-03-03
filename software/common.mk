@@ -3,17 +3,17 @@
 # Report bugs and issues on <https://github.com/skordal/potato/issues>
 
 # Tools used to build applications:
-TARGET_PREFIX ?= riscv64-unknown-elf
+TARGET_PREFIX ?= riscv32-unknown-elf
 TARGET_CC := $(TARGET_PREFIX)-gcc
 TARGET_LD := $(TARGET_PREFIX)-gcc
 TARGET_SIZE := $(TARGET_PREFIX)-size
 TARGET_OBJCOPY := $(TARGET_PREFIX)-objcopy
 HEXDUMP ?= hexdump
 ##-Wl,-m,elf64lriscv
-TARGET_CFLAGS +=  -march=rv32imaf -mabi=ilp32f -mno-div -Wall -Os -fomit-frame-pointer \
+TARGET_CFLAGS +=  -march=rv32imf -mabi=ilp32 -mno-div -Wall -Os -fomit-frame-pointer \
 	-ffreestanding -fno-builtin -fanalyzer -I../.. -I../../libsoc -std=gnu99 \
 	-Wall -Werror=implicit-function-declaration -ffunction-sections -fdata-sections
-TARGET_LDFLAGS += -march=rv32imaf -mabi=ilp32f -mno-div -nostartfiles -L../libsoc \
+TARGET_LDFLAGS += -march=rv32imf -mabi=ilp32 -mno-div -nostartfiles -L../libsoc \
 	 --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
 
 %.bin: %.elf
