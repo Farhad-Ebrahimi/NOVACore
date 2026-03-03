@@ -91,7 +91,7 @@ package body pp_utilities is
         op = ALU_FDIV or
         op = ALU_FCVT_S_W or
         op = ALU_FCVT_S_WU or
-        op = ALU_FMVWX
+        op = ALU_FMV_X_W
         );
     end function;
 
