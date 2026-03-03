@@ -5,8 +5,10 @@ Discarded input sections
  .data          0x00000000        0x0 fadd_s.o
  .bss           0x00000000        0x0 fadd_s.o
  .text.test_fpu_logic_mul
-                0x00000000       0x34 fadd_s.o
+                0x00000000       0x38 fadd_s.o
  .text.test_fpu_logic_add
+                0x00000000       0x34 fadd_s.o
+ .text.test_fpu_logic_add_1
                 0x00000000       0x34 fadd_s.o
  .text.test_fpu_logic_sub
                 0x00000000       0x34 fadd_s.o
@@ -24,7 +26,7 @@ RAM              0x00000000         0x00080000         xrw
 Linker script and memory map
 
 
-.text           0x00000000      0x208
+.text           0x00000000      0x23c
  *(.init)
  .init          0x00000000      0x158 start.o
                 0x00000000                _start
@@ -35,29 +37,29 @@ Linker script and memory map
                 0x00000158       0x24 fadd_s.o
                 0x00000158                exception_handler
  .text.startup.main
-                0x0000017c       0x8c fadd_s.o
+                0x0000017c       0xc0 fadd_s.o
                 0x0000017c                main
-                0x00000208                        __text_end = .
+                0x0000023c                        __text_end = .
 
-.rela.dyn       0x00000208        0x0
- .rela.init     0x00000208        0x0 fadd_s.o
+.rela.dyn       0x0000023c        0x0
+ .rela.init     0x0000023c        0x0 fadd_s.o
 
-.rodata         0x00000208        0x0
-                0x00000208                        __rodata_begin = .
+.rodata         0x0000023c        0x0
+                0x0000023c                        __rodata_begin = .
  *(.rodata*)
-                0x00000208                        __rodata_end = .
+                0x0000023c                        __rodata_end = .
 
-.data           0x00000208        0x0
-                0x00000208                        __data_begin = .
+.data           0x0000023c        0x0
+                0x0000023c                        __data_begin = .
  *(.data*)
  *(.eh_frame*)
-                0x00000208                        __data_end = .
+                0x0000023c                        __data_end = .
 
-.bss            0x00000208        0x0
-                0x00000208                        __bss_begin = .
+.bss            0x0000023c        0x0
+                0x0000023c                        __bss_begin = .
  *(.bss*)
  *(.sbss*)
-                0x00000208                        __bss_end = ALIGN (0x4)
+                0x0000023c                        __bss_end = ALIGN (0x4)
                 0x00080000                        __stack_top = 0x80000
 
 /DISCARD/
