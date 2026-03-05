@@ -16,6 +16,12 @@ TARGET_CFLAGS +=  -march=rv32imaf -mabi=ilp32f  -Wall -Os -fomit-frame-pointer \
 TARGET_LDFLAGS += -march=rv32imaf -mabi=ilp32f  -nostartfiles -L../libsoc \
 	 --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
 
+TARGET_CFLAGS +=  -march=rv32imf_zicsr -mno-div -Wall -Os -fomit-frame-pointer \
+	-ffreestanding -fno-builtin -fanalyzer -I../.. -I../../libsoc -std=gnu99 \
+	-Wall -Werror=implicit-function-declaration -ffunction-sections -fdata-sections
+TARGET_LDFLAGS += -march=rv32imf_zicsr -mno-div -nostartfiles -L../libsoc \
+	-Wl,-m,elf32lriscv --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
+
 %.bin: %.elf
 	$(TARGET_OBJCOPY) -O binary $< $@
 
