@@ -20,6 +20,26 @@ exception_handler:
 	lw	a5,0(zero)
 	ebreak
 	.size	exception_handler, .-exception_handler
+	.section	.text.test_fpu_logic_mul,"ax",@progbits
+	.align	2
+	.globl	test_fpu_logic_mul
+	.type	test_fpu_logic_mul, @function
+test_fpu_logic_mul:
+	addi	sp,sp,-16
+	li	a5,12
+	sw	a5,8(sp)
+	li	a5,4
+	sw	a5,12(sp)
+	lw	a4,8(sp)
+	lw	a5,12(sp)
+	fcvt.s.w	fa5,a4
+	fcvt.s.w	fa4,a5
+	addi	sp,sp,16
+	fmul.s	fa5,fa5,fa4
+	fcvt.w.s a5,fa5,rtz
+	fcvt.s.w	fa0,a5
+	jr	ra
+	.size	test_fpu_logic_mul, .-test_fpu_logic_mul
 	.section	.text.test_fpu_logic_add,"ax",@progbits
 	.align	2
 	.globl	test_fpu_logic_add
@@ -38,45 +58,77 @@ conv:
 	fcvt.s.w	fa0,a0
 	ret
 	.size	conv, .-conv
+	.section	.text.test_fpu_logic_add_1,"ax",@progbits
+	.align	2
+	.globl	test_fpu_logic_add_1
+	.type	test_fpu_logic_add_1, @function
+test_fpu_logic_add_1:
+	addi	sp,sp,-16
+	li	a5,20
+	sw	a5,8(sp)
+	li	a5,6
+	sw	a5,12(sp)
+	lw	a4,8(sp)
+	lw	a5,12(sp)
+	fcvt.s.w	fa5,a4
+	fcvt.s.w	fa4,a5
+	addi	sp,sp,16
+	fadd.s	fa5,fa5,fa4
+	fcvt.w.s a0,fa5,rtz
+	jr	ra
+	.size	test_fpu_logic_add_1, .-test_fpu_logic_add_1
+	.section	.text.test_fpu_logic_div,"ax",@progbits
+	.align	2
+	.globl	test_fpu_logic_div
+	.type	test_fpu_logic_div, @function
+test_fpu_logic_div:
+	fcvt.s.w	fa5,a0
+	fcvt.s.w	fa4,a1
+	fdiv.s	fa5,fa5,fa4
+	fcvt.w.s a0,fa5,rtz
+	ret
+	.size	test_fpu_logic_div, .-test_fpu_logic_div
 	.section	.text.startup.main,"ax",@progbits
 	.align	2
 	.globl	main
 	.type	main, @function
 main:
-	addi	sp,sp,-32
+	addi	sp,sp,-48
 	li	a5,2
-	sw	a5,0(sp)
+	sw	a5,12(sp)
 	li	a5,3
-	sw	a5,4(sp)
-	lw	a5,4(sp)
-	fcvt.s.w	fa5,a5
-	fsw	fa5,8(sp)
-	lw	a4,0(sp)
-	lw	a5,4(sp)
-	fcvt.s.w	fa4,a4
-	fcvt.s.w	fa5,a5
-	fadd.s	fa5,fa5,fa4
-	fsw	fa5,12(sp)
-	flw	fa4,12(sp)
-	flw	fa5,8(sp)
-	fgt.s	a5,fa4,fa5
-	beq	a5,zero,.L12
-	li	a5,10
 	sw	a5,16(sp)
-	lw	a5,16(sp)
-	fcvt.s.w	fa5,a5
-	fsw	fa5,20(sp)
-	flw	fa5,20(sp)
-	flw	fa4,12(sp)
-	fmul.s	fa5,fa5,fa4
-	fsw	fa5,24(sp)
-.L13:
-	j	.L13
-.L12:
-	flw	fa5,12(sp)
+	li	a5,20
+	sw	a5,20(sp)
+	li	a4,4
+	sw	a4,24(sp)
+	lw	a2,16(sp)
+	lw	a3,12(sp)
+	li	a4,6
+	fcvt.s.w	fa5,a2
+	fcvt.s.w	fa4,a3
+	li	a0,0
+	fdiv.s	fa5,fa5,fa4
+	fcvt.w.s a3,fa5,rtz
+	sw	a3,28(sp)
+	lw	a2,20(sp)
+	lw	a3,24(sp)
+	fcvt.s.w	fa5,a2
+	fcvt.s.w	fa4,a3
+	fdiv.s	fa5,fa5,fa4
+	fcvt.w.s a3,fa5,rtz
+	sw	a3,32(sp)
+	sw	a5,40(sp)
+	sw	a4,44(sp)
+	lw	a4,40(sp)
+	lw	a5,44(sp)
+	fcvt.s.w	fa5,a4
+	fcvt.s.w	fa4,a5
+	fadd.s	fa5,fa5,fa4
 	fcvt.w.s a5,fa5,rtz
-	sw	a5,28(sp)
-	j	.L13
+	sw	a5,36(sp)
+	addi	sp,sp,48
+	jr	ra
 	.size	main, .-main
 	.ident	"GCC: (GNU) 15.1.0"
 	.section	.note.GNU-stack,"",@progbits
