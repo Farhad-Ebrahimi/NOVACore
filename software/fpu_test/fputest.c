@@ -35,7 +35,7 @@ int main()
 	// Configure the UART:
 	uart_initialize(&uart0, (volatile void *)PLATFORM_UART0_BASE);
 	uart_set_divisor(&uart0, uart_baud2divisor(115200, PLATFORM_SYSCLK_FREQ));
-	uart_tx_string(&uart0, "--- FPU Test Application ---\r\n\n");
+	uart_tx_string(&uart0, "--- Test Application ---\r\n\n");
 
 	// Set up timer0 at 1 Hz:
 	timer_initialize(&timer0, (volatile void *)PLATFORM_TIMER0_BASE);
@@ -49,41 +49,25 @@ int main()
 
 	// End NOVA platform initialization
 
-	float a = 3.14159f;
-	float b = 2.71828f;
+	float a = 5.7635, b = 10.6537;
 
-	float x;
-    asm volatile ("fmul.s %0, %1, %2" : "=f"(x) : "f"(a), "f"(b));
-	int afterpoint = 100000;
-
-	// Print the result:
-	int ipart = (int)x;
+	float res = fsum(a, b);
+	int ipart = (int)res;
+	int fpart = (int)((res - (float)ipart) * (float)10000);
+	uart_tx_string(&uart0, "Sum: ");
 	char buf[32];
-
-	uart_tx_string(&uart0, "result: ");
-	// convert integer part to string
-	intToStr(ipart, buf, 0);
+	int2string(ipart, buf);
 	uart_tx_string(&uart0, buf);
 	uart_tx_string(&uart0, ".");
-
-	if (afterpoint > 0)
-	{
-		float fpart = x - (float)((int)x);
-		fpart = fpart  * afterpoint;
-		intToStr((int)(fpart + 0.5f), buf, 0); // Add 0.5 to round to nearest integer
-		uart_tx_string(&uart0, buf);
-		uart_tx_string(&uart0, "\r\n");
-	}
-
-	else
-	{
-		do
-		{
-			uart_tx_string(&uart0, "0");
-			afterpoint--;
-		}while (afterpoint > 0);
-	}
+	int2string(fpart, buf);
+	uart_tx_string(&uart0, buf);
 	uart_tx_string(&uart0, "\r\n");
+
+	while (1)
+	{
+		/* code */
+	}
+	
 	
 	
 

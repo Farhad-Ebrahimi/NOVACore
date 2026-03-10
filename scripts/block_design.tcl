@@ -227,6 +227,8 @@ proc create_root_design { parentCell } {
 
   # Create ports
   set led [ create_bd_port -dir O -from 0 -to 0 led ]
+  set uart1_txd [ create_bd_port -dir O uart1_txd ]
+  set uart1_rxd [ create_bd_port -dir I uart1_rxd ]
 
   # Create instance: zynq_ultra_ps_e_0, and set properties
   set zynq_ultra_ps_e_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.5 zynq_ultra_ps_e_0 ]
@@ -692,9 +694,9 @@ Port;FD4A0000;FD4AFFFF;0|FPD;DPDMA;FD4C0000;FD4CFFFF;0|FPD;DDR_XMPU5_CFG;FD05000
   set clk_gen [ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_gen ]
   set_property -dict [list \
     CONFIG.CLKOUT1_DRIVES {BUFGCE} \
-    CONFIG.CLKOUT1_JITTER {154.538} \
+    CONFIG.CLKOUT1_JITTER {172.571} \
     CONFIG.CLKOUT1_PHASE_ERROR {221.516} \
-    CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {275.000} \
+    CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {125.000} \
     CONFIG.CLKOUT2_DRIVES {BUFGCE} \
     CONFIG.CLKOUT3_DRIVES {BUFGCE} \
     CONFIG.CLKOUT4_DRIVES {BUFGCE} \
@@ -704,7 +706,7 @@ Port;FD4A0000;FD4AFFFF;0|FPD;DPDMA;FD4C0000;FD4CFFFF;0|FPD;DDR_XMPU5_CFG;FD05000
     CONFIG.CLK_OUT1_PORT {soc_clk} \
     CONFIG.FEEDBACK_SOURCE {FDBK_AUTO} \
     CONFIG.MMCM_CLKFBOUT_MULT_F {48.125} \
-    CONFIG.MMCM_CLKOUT0_DIVIDE_F {4.375} \
+    CONFIG.MMCM_CLKOUT0_DIVIDE_F {9.625} \
     CONFIG.MMCM_DIVCLK_DIVIDE {4} \
     CONFIG.RESET_PORT {resetn} \
     CONFIG.RESET_TYPE {ACTIVE_LOW} \
@@ -751,13 +753,15 @@ Port;FD4A0000;FD4AFFFF;0|FPD;DPDMA;FD4C0000;FD4CFFFF;0|FPD;DDR_XMPU5_CFG;FD05000
   connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM0_LPD [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_LPD] [get_bd_intf_pins ps8_0_axi_periph/S00_AXI]
 
   # Create port connections
-  connect_bd_net -net axi_gpio_0_gpio_io_o [get_bd_pins axi_gpio_0/gpio_io_o] [get_bd_pins NOVACore/reset_n] [get_bd_ports led]
+  connect_bd_net -net NOVACore_uart1_txd [get_bd_pins NOVACore/uart1_txd] [get_bd_ports uart1_txd]
+  connect_bd_net -net axi_gpio_0_gpio_io_o [get_bd_pins axi_gpio_0/gpio_io_o] [get_bd_ports led] [get_bd_pins NOVACore/reset_n]
   connect_bd_net -net axi_uartlite_0_interrupt [get_bd_pins axi_uartlite_0/interrupt] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq0]
   connect_bd_net -net axi_uartlite_0_tx [get_bd_pins axi_uartlite_0/tx] [get_bd_pins NOVACore/uart0_rxd]
   connect_bd_net -net clk_gen_locked [get_bd_pins clk_gen/locked] [get_bd_pins rst_clk_gen_275M/dcm_locked] [get_bd_pins NOVACore/system_clk_locked]
-  connect_bd_net -net clk_gen_soc_clk [get_bd_pins clk_gen/soc_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk] [get_bd_pins ps8_0_axi_periph/S00_ACLK] [get_bd_pins rst_clk_gen_275M/slowest_sync_clk] [get_bd_pins axi_gpio_0/s_axi_aclk] [get_bd_pins ps8_0_axi_periph/M00_ACLK] [get_bd_pins ps8_0_axi_periph/ACLK] [get_bd_pins NOVACore/system_clk] [get_bd_pins axi_uartlite_0/s_axi_aclk] [get_bd_pins ps8_0_axi_periph/M01_ACLK]
+  connect_bd_net -net clk_gen_soc_clk [get_bd_pins clk_gen/soc_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk] [get_bd_pins ps8_0_axi_periph/S00_ACLK] [get_bd_pins rst_clk_gen_275M/slowest_sync_clk] [get_bd_pins axi_gpio_0/s_axi_aclk] [get_bd_pins ps8_0_axi_periph/M00_ACLK] [get_bd_pins ps8_0_axi_periph/ACLK] [get_bd_pins axi_uartlite_0/s_axi_aclk] [get_bd_pins ps8_0_axi_periph/M01_ACLK] [get_bd_pins NOVACore/system_clk]
   connect_bd_net -net rst_clk_gen_275M_peripheral_aresetn [get_bd_pins rst_clk_gen_275M/peripheral_aresetn] [get_bd_pins ps8_0_axi_periph/S00_ARESETN] [get_bd_pins axi_gpio_0/s_axi_aresetn] [get_bd_pins ps8_0_axi_periph/M00_ARESETN] [get_bd_pins ps8_0_axi_periph/ARESETN] [get_bd_pins axi_uartlite_0/s_axi_aresetn] [get_bd_pins ps8_0_axi_periph/M01_ARESETN]
   connect_bd_net -net toplevel_0_uart0_txd [get_bd_pins NOVACore/uart0_txd] [get_bd_pins axi_uartlite_0/rx]
+  connect_bd_net -net uart1_rxd_1 [get_bd_ports uart1_rxd] [get_bd_pins NOVACore/uart1_rxd]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins zynq_ultra_ps_e_0/pl_clk0] [get_bd_pins clk_gen/clk_in1]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0] [get_bd_pins clk_gen/resetn] [get_bd_pins rst_clk_gen_275M/ext_reset_in]
 

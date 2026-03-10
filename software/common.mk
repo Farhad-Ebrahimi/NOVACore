@@ -10,10 +10,10 @@ TARGET_SIZE := $(TARGET_PREFIX)-size
 TARGET_OBJCOPY := $(TARGET_PREFIX)-objcopy
 HEXDUMP ?= hexdump
 ##-Wl,-m,elf64lriscv -mno-div -mno-div
-TARGET_CFLAGS +=  -march=rv32imf -mabi=ilp32f  -Wall -Os -fomit-frame-pointer \
+TARGET_CFLAGS +=  -march=rv32imf_zicsr -mabi=ilp32 -mno-div  -Wall -Os -fomit-frame-pointer \
 	-ffreestanding -fno-builtin -fanalyzer -I../.. -I../../libsoc -std=gnu99 \
 	-Wall -Werror=implicit-function-declaration -ffunction-sections -fdata-sections
-TARGET_LDFLAGS += -march=rv32imf -mabi=ilp32f  -nostartfiles -L../libsoc \
+TARGET_LDFLAGS += -march=rv32imf_zicsr -mabi=ilp32 -mno-div -nostartfiles -L../libsoc \
 	 --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
 
 ##ARGET_CFLAGS +=  -march=rv32imf_zicsr -mno-div -Wall -Os -fomit-frame-pointer \

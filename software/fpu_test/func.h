@@ -2,8 +2,9 @@
 
 #ifndef fputest_H
 #define fputest_H
-void reverse(char* str, int len) ;
-int intToStr(int x, char str[], int d) ;
+int sum (int a, int b) ;
+float fsum (float a, float b) ;
+void int2string(int n, char *s);
 void fp2string(float n, int afterpoint) ;
 
 #endif

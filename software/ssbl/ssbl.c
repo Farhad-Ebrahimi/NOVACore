@@ -3,82 +3,85 @@
 // Demonstration : <https://www.cs3.tf.fau.de/nova-core-2/>
 // Report bugs and issues on <https://github.com/Farhad-Ebrahimi/NOVACore/issues>
 
-// The Potato Processor Benchmark Applications
-// (c) Kristian Klomsten Skordal 2015 <kristian.skordal@wafflemail.net>
-// Report bugs and issues on <https://github.com/skordal/potato/issues>
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include "platform.h"
 #include "uart.h"
 
-#define APP_LEN   (0x80000) 
-#define APP_ADDR  (0x00000000) 
-#define FSBL_ADDR  (0xffff8000) 
+#define APP_LEN   0x80000      // 512 KB
+#define APP_ADDR  0x00000000   // Valid start address
+#define FSBL_ADDR 0xffff8000
 
 static struct uart uart0;
-typedef void (*boot_func_t)(void); 
+
+typedef void (*boot_func_t)(void);
 #define APP_start  ((boot_func_t)APP_ADDR)
 #define FSBL_start ((boot_func_t)FSBL_ADDR)
-#define APP_MEM  ((volatile uint8_t *)APP_ADDR)
+#define APP_MEM    ((volatile uint8_t *)APP_ADDR)
 
-void int2string(int i, char *s);
+/* Prototypes */
+void int2string(int n, char *s);
+void receive_binary(volatile uint8_t *dest, uint32_t length);
+char uart_rx_char(void);
 
-
-void exception_handler(uint32_t cause, void *epc, void *regbase)
-{
+void exception_handler(uint32_t cause, void *epc, void *regbase) {
     while (uart_tx_fifo_full(&uart0));
-    uart_tx(&uart0, 'E'); 
+    uart_tx(&uart0, 'E');
 }
 
-char uart_rx_char()
-{
+char uart_rx_char() {
     while (uart_rx_fifo_empty(&uart0));
     return uart_rx(&uart0);
 }
 
-void receive_binary(volatile uint8_t *dest, uint32_t length)
-{
+/* Updated Binary Receiver */
+void receive_binary(volatile uint8_t *dest, uint32_t length) {
+    // Check if length is zero or if the end address exceeds 512KB
+    if (length == 0 || ((uintptr_t)dest + length) > APP_LEN) {
+        uart_tx_string(&uart0, "\n\rError: Invalid length or memory overflow!\n\r");
+        return;
+    }
+
     uint32_t last_percent = 0;
+    volatile uint8_t *ptr = dest;
 
     uart_tx_string(&uart0, "Receiving binary: 0%");
 
-    for (uint32_t i = 0; i < length; i++)
-    {
+    for (uint32_t i = 0; i < length; i++) {
         while (uart_rx_fifo_empty(&uart0));
-        dest[i] = uart_rx(&uart0);
 
-        int percent = (i * 100) / length;
+        *ptr++ = uart_rx(&uart0);
 
-        // Print percentage only if it has increased by at least 10%
-        if (percent >= last_percent + 10)
-        {
-            uart_tx_string(&uart0, "-->%");
-            last_percent = percent;
+        uint32_t percent = (i * 100) / length;
+        if (percent >= last_percent + 10) {
             char buffer[8];
             int2string(percent, buffer);
-            uart_tx_string(&uart0, buffer);   
+            uart_tx_string(&uart0, "->");
+            uart_tx_string(&uart0, buffer);
+            uart_tx_string(&uart0, "%");
+            last_percent = percent;
         }
     }
-
-    uart_tx_string(&uart0, "-->%100 [Transfer completed]!\n\n\r");
+    uart_tx_string(&uart0, " 100% [Transfer completed]\n\r");
 }
 
 int main(void)
 {
-    
+
     uart_initialize(&uart0, (volatile void *)PLATFORM_UART0_BASE);
     uart_set_divisor(&uart0, uart_baud2divisor(115200, PLATFORM_SYSCLK_FREQ));
 
     while (1)
     {
-    
+
         uart_tx_string(&uart0, "\n\n\r+-------------------------------+\n\r|  NOVACore SSBL MENU  CS3@FAU  |\n\r+-------------------------------+\n\r1. RESET AND RELOAD A NEW SSBL! \n\r2. CONTINUE WITH UPLOADING AN APPLICATION \n\rSELECT > ");
         char option = uart_rx_char();
-        uart_tx(&uart0, option); 
+        uart_tx(&uart0, option);
 
-        if (option == '1') 
+        if (option == '1')
         {
             FSBL_start();
         }
@@ -101,31 +104,31 @@ int main(void)
 
 void int2string(int n, char *s)
 {
-	bool first = true;
+    bool first = true;
 
-	if (n == 0)
-	{
-		s[0] = '0';
-		s[1] = 0;
-		return;
-	}
+    if (n == 0)
+    {
+        s[0] = '0';
+        s[1] = 0;
+        return;
+    }
 
-	if (n & (1u << 31))
-	{
-		n = ~n + 1;
-		*(s++) = '-';
-	}
+    if (n & (1u << 31))
+    {
+        n = ~n + 1;
+        *(s++) = '-';
+    }
 
-	for (int i = 1000000000; i > 0; i /= 10)
-	{
-		if (n / i == 0 && !first)
-			*(s++) = '0';
-		else if (n / i != 0)
-		{
-			*(s++) = '0' + n / i;
-			n %= i;
-			first = false;
-		}
-	}
-	*s = 0;
+    for (int i = 1000000000; i > 0; i /= 10)
+    {
+        if (n / i == 0 && !first)
+            *(s++) = '0';
+        else if (n / i != 0)
+        {
+            *(s++) = '0' + n / i;
+            n %= i;
+            first = false;
+        }
+    }
+    *s = 0;
 }
