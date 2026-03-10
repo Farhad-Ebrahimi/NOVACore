@@ -87,20 +87,19 @@ void exception_handler(uint32_t mcause, uint32_t mepc, uint32_t sp)
   {
     uint8_t irq = mcause & 0x0f;
 
-    switch (irq)
-    {
-    case PLATFORM_IRQ_TIMER0:
+    if (irq == PLATFORM_IRQ_TIMER0)
     {
       // Print the number of hashes since last interrupt:
       char hps_dec[11];
       Dhrystones_Per_Second = Dhrystones_Per_Second * DHRY_ITERS;
       int2string(Dhrystones_Per_Second, hps_dec);
       uart_tx_string(&uart0, hps_dec);
-      uart_tx_string(&uart0, " Dhrystones_Per_Second/s\n\r");
+      uart_tx_string(&uart0, " Itr/Sec\n\r");
       count++;
-      if (count < 1){
+      if (count < 1)
+      {
         reset_counter = false;
-        }
+      }
       else
       {
         reset_counter = true;
@@ -108,69 +107,12 @@ void exception_handler(uint32_t mcause, uint32_t mepc, uint32_t sp)
         potato_disable_irq(irq);
       }
       timer_clear(&timer0);
-      Dhrystones_Per_Second=0;
-      break;
-    }
-    case PLATFORM_IRQ_TIMER1:
-    {
-      led_status >>= 1;
-      if ((led_status & 0xf) == 0)
-        led_status = 0x8;
-
-      // Read the switches to determine which LEDs should be used:
-      uint32_t switch_mask = (gpio_get_input(&gpio0) >> 4) & 0xf;
-
-      // Read the buttons and turn on the corresponding LED regardless of the switch settings:
-      uint32_t button_mask = gpio_get_input(&gpio0) & 0xf;
-
-      // Set the LEDs:
-      gpio_set_output(&gpio0, ((led_status & switch_mask) | button_mask) << 8);
-      timer_clear(&timer1);
-      break;
-    }
-    case PLATFORM_IRQ_BUS_ERROR:
-    {
-      uart_tx_string(&uart0, "Bus error!\n\r");
-
-      enum icerror_access_type access = icerror_get_access_type(&icerror0);
-      switch (access)
-      {
-      case ICERROR_ACCESS_READ:
-      {
-        uart_tx_string(&uart0, "\tType: read\n\r");
-
-        uart_tx_string(&uart0, "\tAddress: ");
-        char address_buffer[5];
-        int2hex32(icerror_get_read_address(&icerror0), address_buffer);
-        uart_tx_string(&uart0, address_buffer);
-        uart_tx_string(&uart0, "\n\r");
-        break;
-      }
-      case ICERROR_ACCESS_WRITE:
-      {
-        uart_tx_string(&uart0, "\tType: write\n\r");
-
-        char address_buffer[5];
-        int2hex32(icerror_get_write_address(&icerror0), address_buffer);
-        uart_tx_string(&uart0, address_buffer);
-        uart_tx_string(&uart0, "\n\r");
-        break;
-      }
-      case ICERROR_ACCESS_NONE:
-        // fallthrough
-      default:
-        break;
-      }
-
-      potato_disable_interrupts();
+      print_result();
+      Dhrystones_Per_Second = 0;
       while (1)
-        potato_wfi();
-
-      break;
-    }
-    default:
-      potato_disable_irq(irq);
-      break;
+      {
+        /* code */
+      }
     }
   }
 }
@@ -192,12 +134,7 @@ int main()
   Str_30 Str_2_Loc;
   REG int Run_Index;
   REG int Number_Of_Runs;
-  /* *****  RISC-VT-SPECIFIC ***** */
-  // Configure GPIOs:
-  gpio_initialize(&gpio0, (volatile void *)PLATFORM_GPIO_BASE);
-  gpio_set_direction(&gpio0, 0xf00); // Set LEDs to output, buttons and switches to input
-  gpio_set_output(&gpio0, 0x100);    // Turn LED0 on.
-
+  /* *****  NOVACore-SPECIFIC ***** */
   // Configure the UART:
   uart_initialize(&uart0, (volatile void *)PLATFORM_UART0_BASE);
   uart_set_divisor(&uart0, uart_baud2divisor(115200, PLATFORM_SYSCLK_FREQ));
@@ -209,21 +146,9 @@ int main()
   timer_set_compare(&timer0, PLATFORM_SYSCLK_FREQ);
   timer_start(&timer0);
 
-  // Set up timer1 at 4 Hz:
-  timer_initialize(&timer1, (volatile void *)PLATFORM_TIMER1_BASE);
-  timer_reset(&timer1);
-  timer_set_compare(&timer1, PLATFORM_SYSCLK_FREQ >> 2);
-  timer_start(&timer1);
-
-  // Set up the interconnect error module for detecting invalid bus accesses:
-  // icerror_initialize(&icerror0, (volatile void *) PLATFORM_ICERROR_BASE);
-  // icerror_reset(&icerror0);
-
   // Enable interrupts:
   potato_enable_irq(PLATFORM_IRQ_TIMER0);
-  potato_enable_irq(PLATFORM_IRQ_TIMER1);
-  // potato_enable_irq(PLATFORM_IRQ_BUS_ERROR);
-  /* *****  RISC-VT-SPECIFIC ***** */
+  /* *****  NOVACore-SPECIFIC ***** */
 
   /* Initializations */
 
@@ -249,9 +174,26 @@ int main()
   /* overflow may occur for this array element.                   */
 
   uart_tx_string(&uart0, "\n");
-  uart_tx_string(&uart0, "Dhrystone Benchmark, Version 2.1 (Language: C)\r\n");
-  uart_tx_string(&uart0, "See : https://github.com/sifive/benchmark-dhrystone \r\n\n");
-  uart_tx_string(&uart0, "*** Customized for NOVACore***\r\n\n");
+  uart_tx_string(&uart0, "+--------------------------------------------------------+\r\n");
+  uart_tx_string(&uart0, "|              'DHRYSTONE' Benchmark Program             |\r\n");
+  uart_tx_string(&uart0, "|                 Version: C, Version 2.1                |\r\n");
+  uart_tx_string(&uart0, "|               File: dhry_1.c (part 2 of 3)             |\r\n");
+  uart_tx_string(&uart0, "|                   Date: May 25, 1988                   |\r\n");
+  uart_tx_string(&uart0, "|               Author: Reinhold P. Weicker              |\r\n");
+  uart_tx_string(&uart0, "|      https://github.com/sifive/benchmark-dhrystone     |\r\n");
+  uart_tx_string(&uart0, "|                   -----------------------              |\r\n");
+  uart_tx_string(&uart0, "|                                                        |\r\n");
+  uart_tx_string(&uart0, "|    NOVACore: 7-Stage CSD RISC-V Core(RV32IMF_Zicsr)    |\r\n");
+  uart_tx_string(&uart0, "|          (c) Farhad Ebrahimiazandaryani 03/23          |\r\n");
+  uart_tx_string(&uart0, "|            Chair of Computer Science 3 | CS3           |\r\n");
+  uart_tx_string(&uart0, "|                  FAU Erlangen-Nurnberg                 |\r\n");
+  uart_tx_string(&uart0, "|                                                        |\r\n");
+  uart_tx_string(&uart0, "|                   -----------------------              |\r\n");
+  uart_tx_string(&uart0, "|                          GitHub:                       |\r\n");
+  uart_tx_string(&uart0, "|       https://github.com/Farhad-Ebrahimi/NOVACore      |\r\n");
+  uart_tx_string(&uart0, "|                                                        |\r\n");
+  uart_tx_string(&uart0, "+--------------------------------------------------------+\r\n\r\n");
+
   if (Reg)
   {
     uart_tx_string(&uart0, "Program compiled with 'register' attribute\r\n\n");
@@ -319,13 +261,11 @@ int main()
     } /* loop "for Run_Index" */
     ++Dhrystones_Per_Second;
   }
-  
-  print_result();
-  
+
   return 0;
 }
 
-print_result()
+void print_result()
 {
   char hps_dec[11];
   uart_tx_string(&uart0, "\r\n");
@@ -350,6 +290,9 @@ print_result()
   char2string(Ch_1_Glob, hps_dec);
   uart_tx_string(&uart0, hps_dec);
   uart_tx_string(&uart0, "        should be:   A\r\n");
+  uart_tx_string(&uart0, " . \r\n");
+  uart_tx_string(&uart0, " . \r\n");
+  uart_tx_string(&uart0, " . \r\n");
   //  printf("Ch_1_Glob:           %c\n", Ch_1_Glob);
   //  printf("        should be:   %c\n", 'A');
   //  printf("Ch_2_Glob:           %c\n", Ch_2_Glob);
@@ -471,7 +414,7 @@ Proc_2(Int_Par_Ref)
       Int_Loc -= 1;
       *Int_Par_Ref = Int_Loc - Int_Glob;
       Enum_Loc = Ident_1;
-    }                          /* if */
+    } /* if */
   while (Enum_Loc != Ident_1); /* true */
 } /* Proc_2 */
 

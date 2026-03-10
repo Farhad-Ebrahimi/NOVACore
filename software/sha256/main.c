@@ -37,8 +37,9 @@ void exception_handler(uint32_t mcause, uint32_t mepc, uint32_t sp)
 		{
 			char hps_dec[11];
 			int2string(hashes_per_second, hps_dec);
+			uart_tx_string(&uart0, "->  ");
 			uart_tx_string(&uart0, hps_dec);
-			uart_tx_string(&uart0, " H/s\n\r");
+			uart_tx_string(&uart0, " Hashes/second\n\r");
 			reset_counter = true;
 			timer_clear(&timer0);
 		}
@@ -50,7 +51,23 @@ int main(void)
 	// Configure the UART:
 	uart_initialize(&uart0, (volatile void *)PLATFORM_UART0_BASE);
 	uart_set_divisor(&uart0, uart_baud2divisor(115200, PLATFORM_SYSCLK_FREQ));
-	uart_tx_string(&uart0, "--- SHA256 Benchmark Application ---\r\n\n");
+	uart_tx_string(&uart0, "+------------------------------------------------------------+\r\n");
+	uart_tx_string(&uart0, "|                                                            |\r\n");
+	uart_tx_string(&uart0, "|                    'SHA256' Benchmark                      |\r\n");
+	uart_tx_string(&uart0, "|                  Version: C, Version 1.0                   |\r\n");
+	uart_tx_string(&uart0, "|                  -----------------------                   |\r\n");
+	uart_tx_string(&uart0, "|                                                            |\r\n");
+	uart_tx_string(&uart0, "|      NOVACore: 7-Stage CSD RISC-V Core(RV32IMF_Zicsr)      |\r\n");
+	uart_tx_string(&uart0, "|            (c) Farhad Ebrahimiazandaryani 03/23            |\r\n");
+	uart_tx_string(&uart0, "|              Chair of Computer Science 3 | CS3             |\r\n");
+	uart_tx_string(&uart0, "|                   FAU Erlangen-Nurnberg                    |\r\n");
+	uart_tx_string(&uart0, "|                                                            |\r\n");
+	uart_tx_string(&uart0, "|                   ---------------------                    |\r\n");
+    uart_tx_string(&uart0, "|                           GitHub:                          |\r\n");
+	uart_tx_string(&uart0, "|         https://github.com/Farhad-Ebrahimi/NOVACore        |\r\n");
+	uart_tx_string(&uart0, "|                                                            |\r\n");
+	uart_tx_string(&uart0, "+------------------------------------------------------------+\r\n\r\n");
+
 
 	// Set up timer0 at 1 Hz:
 	timer_initialize(&timer0, (volatile void *)PLATFORM_TIMER0_BASE);
@@ -72,7 +89,7 @@ int main(void)
 	block_ptr[2] = 'c';
 	sha256_pad_le_block(block_ptr, 3, 3);
 
-	uart_tx_string(&uart0, "Beginning...\n\r");
+	uart_tx_string(&uart0, "Beginning...\n\n\r");
 	while (true)
 	{
 		uint8_t hash[32];
