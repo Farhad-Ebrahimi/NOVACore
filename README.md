@@ -2,24 +2,48 @@
 
 ![Processor architecture overview diagramme](docs/nova.png)
 
-The NOVACore is a straightforward 7-stage in-order RISC-V processor implemented in VHDL for FPGA use. It supports the 32-bit RV32IMF-Zicsr ISA, providing a RISC-V processor with a base set of integer arithmetic instructions (RV32I), a multiplication and division extension (RV32M) with SRT divider implementation, IEEE754 single-precision floating-point (RV32F), and control and status register manipulation instructions (Zicsr) as per Specification version 2.0. Additionally, it supports significant portions of the machine mode defined in the RISC-V Privileged Architecture Specification v1.10.
+The **NOVACore** is a 7-stage in-order RISC-V processor implemented in VHDL, designed for both **FPGA prototyping and ASIC deployment**. It supports the 32-bit **RV32IMF-Zicsr** ISA, including integer, multiplication/division, and IEEE 754 single-precision floating-point operations.
 
-The processor has been tested on the Xilinx Zynq-7000 family(XC7Z020-1CLG400C) and Ultra96-V2 which is an Arm-based, AMD Xilinx Zynq UltraScale+ ™ MPSoC development board  using the example SoC design provided in the `example/` directory and the applications found in the `software/` directory. Synthesis and implementation have been tested on various Xilinx's Vivado toolchain versions, most recently version 2023.1.
+The processor has been successfully implemented on FPGA platforms as well as realized as an **ASIC in IHP 130 nm technology**, demonstrating its readiness for silicon deployment. In addition, NOVACore has been **validated in an industrial environment**, including testing within a **commercial CT scanning system from a leading medical engineering manufacturer**, confirming its robustness and reliability in real-world applications.
+
+---
 
 ## Features
 
-* 32-bit RV32IMF-Zicsr ISA supporting:
+* 32-bit **RV32IMF-Zicsr ISA** supporting:
   - Base integer arithmetic instructions (RV32I)
-  - Multiplication and division extension (RV32M) with optimized SRT divider
-  - IEEE754 single-precision floating-point (RV32F) with full 3-stage FPU pipeline
-  - Control and status register manipulation (Zicsr) version 2.0
-* Supports large parts of the machine mode defined in the RISC-V Privileged Architecture version 1.10
-* Supports up to 8 individually maskable external interrupts (IRQs)
-* 7-stage RISC pipeline including 3-step Ternary Encoded Instruction Execution stage (IE: IE1, IE2, IE3)
-* 1-bit Dynamic Branch Prediction Unit (D-BPU)
-* 3-stage IEEE754 single-precision FPU pipeline (Addition, Subtraction, Multiplication, Division)
-* Optional instruction cache
-* Supports the Wishbone bus, version B4
+  - Multiplication and division (RV32M) with optimized SRT divider
+  - IEEE754 single-precision floating-point (RV32F)
+  - Control and status register manipulation (Zicsr v2.0)
+
+* Partial support for **RISC-V Privileged Architecture v1.10 (Machine Mode)**
+* **7-stage pipeline**, including 3-stage ternary-encoded execution (IE1, IE2, IE3)
+* **3-stage pipelined FPU**
+* **1-bit dynamic branch prediction unit**
+* Up to **8 maskable external interrupts**
+* Optional **instruction cache**
+* **Wishbone B4 bus interface**
+
+---
+
+## Implementation & Validation
+
+NOVACore has been tested and validated across multiple platforms:
+
+- **FPGA**
+  - Xilinx Zynq-7000 (XC7Z020-1CLG400C)
+  - Ultra96-V2 (Zynq UltraScale+ MPSoC)
+  - Verified with Xilinx Vivado (up to version 2023.1)
+
+- **ASIC**
+  - Implemented using **IHP 130 nm technology**
+  - Demonstrates functional correctness and timing closure in silicon
+
+- **Industrial Validation**
+  - Tested in a **commercial CT scan device**
+  - Proven reliability in real-world, safety-critical environments
+
+---
 
 ## Peripherals
 
@@ -50,17 +74,25 @@ the destination directory is writeable by your user):
 
 ## Contributors & Acknowledgments
 
-* **Aiswarya Mukherjee** - IEEE754 Single Precision FPU Implementation with 3-stage pipeline
-* **Oliver Schnell** - Optimized SRT Divider for RV32M division support
-* **Farhad EbrahimiAzandaryani** - Core architecture, BPU, and system integration
+* **Farhad Ebrahimiazandaryani** – Lead Developer; NOVACore and SoC Architect; FPGA Prototyping  
+
+**Co-developers:**
+* **Michael Kupfer** – Implementation of the open-source ASIC design flow  
+* **Aiswarya Mukherjee** – IEEE 754 single-precision "RV32F" ISA extension  
+* **Oliver Schnell** – Optimized SRT divider for "RV32M" division support  
  
 
 ## Citation  
 
-If you are using **NOVACore** in your scientific or research activities, please cite it properly:  
+If you are using **NOVACore** in your scientific or research activities, please cite it properly: 
 
-* F. EbrahimiAzandaryani and D. Fey, “CSD-Driven Speedup in RISC-V Processors,” Design and Architectures for Signal and Image Processing (DASIP)|HiPEAC,2025. 
-* F. EbrahimiAzandaryani and D. Fey, “Extern: Boosting RISC-V Core Performance using Ternary Encoding,” Microprocessors and Microsystems, vol. 107, 2024. 
+* F. EbrahimiAzandaryani and D. Fey, "CSD-Driven Speedup in RISC-V Processors," Design and Architectures for Signal and Image Processing (DASIP)|HiPEAC, 2025. 
+
+* F. EbrahimiAzandaryani and D. Fey, "Extern: Boosting RISC-V Core Performance using Ternary Encoding," Microprocessors and Microsystems, vol. 107, 2024. 
+
+* A. Abdelhafez, F. EbrahimiAzandaryani, M. Bianconi and D. Fey, "FPGA Implementation of a Real-Time Application Based on RISC-V Cores," 2025 IEEE 22nd International Multi-Conference on Systems, Signals & Devices (SSD), Monastir, Tunisia, 2025, pp. 1174-1179, doi: 10.1109/SSD64182.2025.10989839. 
+
+* F. Ebrahimiazandaryani, et al., "Silicon-Based Evaluation of CSD Arithmetic in a RISC-V Processor Using Open-Source ASIC Flow," IEEE ISCAS, 2026. 
 
 We appreciate your acknowledgment and contributions!
 
