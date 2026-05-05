@@ -131,12 +131,18 @@ begin
                             alu_op <= ALU_SLTU;
                         end if;
 					when b"100" =>
-						alu_op <= ALU_XOR;
+            if funct7 = "0000000" then
+              alu_op <= ALU_XOR;
+            else
+              alu_op <= ALU_DIV;
+            end if;
 					when b"101" =>
 						if funct7 = b"0000000" then
 							alu_op <= ALU_SRL;
-						else
+            elsif funct7 = b"0100000" then
 							alu_op <= ALU_SRA;
+            else
+              alu_op <= ALU_DIVU;
 						end if;
 					when b"110" =>
 						alu_op <= ALU_OR;

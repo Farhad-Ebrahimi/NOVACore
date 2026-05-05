@@ -1,0 +1,5 @@
+build/
+*.jou
+*.log
+software/bootloader/coe2bin
+software/bootloader/out
