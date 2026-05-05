@@ -2,17 +2,22 @@
 
 ![Processor architecture overview diagramme](docs/nova.png)
 
-The NOVACore is a straightforward 7-stage in-order RISC-V processor implemented in VHDL for FPGA use. It supports the 32-bit RV32IZmmul-Zicsr ISA, providing a RISC-V processor with a base set of integer arithmetic instructions (RV32I), a multiplication extension excluding division (Zmmul), and control and status register manipulation instructions (Zicsr) as per Specification version 2.0. Additionally, it supports significant portions of the machine mode defined in the RISC-V Privileged Architecture Specification v1.10.
+The NOVACore is a straightforward 7-stage in-order RISC-V processor implemented in VHDL for FPGA use. It supports the 32-bit RV32IMF-Zicsr ISA, providing a RISC-V processor with a base set of integer arithmetic instructions (RV32I), a multiplication and division extension (RV32M) with SRT divider implementation, IEEE754 single-precision floating-point (RV32F), and control and status register manipulation instructions (Zicsr) as per Specification version 2.0. Additionally, it supports significant portions of the machine mode defined in the RISC-V Privileged Architecture Specification v1.10.
 
 The processor has been tested on the Xilinx Zynq-7000 family(XC7Z020-1CLG400C) and Ultra96-V2 which is an Arm-based, AMD Xilinx Zynq UltraScale+ ™ MPSoC development board  using the example SoC design provided in the `example/` directory and the applications found in the `software/` directory. Synthesis and implementation have been tested on various Xilinx's Vivado toolchain versions, most recently version 2023.1.
 
 ## Features
 
-* 32-bit RV32IZmmul-Zicsr ISA, providing a RISC-V processor with a base set of integer arithmetic instructions (RV32I), a multiplication extension excluding division (Zmmul), and control and status register manipulation instructions (Zicsr) version 2.0
+* 32-bit RV32IMF-Zicsr ISA supporting:
+  - Base integer arithmetic instructions (RV32I)
+  - Multiplication and division extension (RV32M) with optimized SRT divider
+  - IEEE754 single-precision floating-point (RV32F) with full 3-stage FPU pipeline
+  - Control and status register manipulation (Zicsr) version 2.0
 * Supports large parts of the machine mode defined in the RISC-V Privileged Architecture version 1.10
 * Supports up to 8 individually maskable external interrupts (IRQs)
-* 7-stage RISC pipeline including 3-step Ternary Encoded Instruction Execution stage(IE: IE1,IE2,IE3)
-* 1-bit Dynamic Branch Prediction Unit(D-BPU)
+* 7-stage RISC pipeline including 3-step Ternary Encoded Instruction Execution stage (IE: IE1, IE2, IE3)
+* 1-bit Dynamic Branch Prediction Unit (D-BPU)
+* 3-stage IEEE754 single-precision FPU pipeline (Addition, Subtraction, Multiplication, Division)
 * Optional instruction cache
 * Supports the Wishbone bus, version B4
 
@@ -40,8 +45,14 @@ To program the processor, you need an appropriate compiler toolchain. To compile
 the toolchain using the following commands (note that `make` will both build and install the toolchain, ensure that the
 the destination directory is writeable by your user):
 
-    ./configure --prefix=/opt/riscv-toolchain --with-abi=ilp32 --with-arch=rv32im
+    ./configure --prefix=/opt/riscv-toolchain --with-abi=ilp32 --with-arch=rv32imf
     make
+
+## Contributors & Acknowledgments
+
+* **Aiswarya Mukherjee** - IEEE754 Single Precision FPU Implementation with 3-stage pipeline
+* **Oliver Schnell** - Optimized SRT Divider for RV32M division support
+* **Farhad EbrahimiAzandaryani** - Core architecture, BPU, and system integration
  
 
 ## Citation  
