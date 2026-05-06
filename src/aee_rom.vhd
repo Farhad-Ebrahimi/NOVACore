@@ -8,10 +8,10 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity fsbl_rom is
-  port(
-    clka     : in  std_logic;
-    addra    : in  std_logic_vector(7 downto 0); 
-    douta    : out std_logic_vector(31 downto 0)  
+  port (
+    clka : in std_logic;
+    addra : in std_logic_vector(7 downto 0);
+    douta : out std_logic_vector(31 downto 0)
   );
 end fsbl_rom;
 
@@ -19,13 +19,16 @@ architecture rtl of fsbl_rom is
 
   type rom_type is array(0 to 255) of std_logic_vector(31 downto 0);
 
-  constant rom_memory : rom_type := (
+    ---7 => x"A03216D3",
+
+constant rom_memory : rom_type := (
+
       0 => x"00000097",   1 => x"07408093",   2 => x"30509073",   3 => x"00000097",
       4 => x"2fc08093",   5 => x"00008117",   6 => x"fec10113",   7 => x"00008197",
       8 => x"fe418193",   9 => x"00310c63",  10 => x"00008203",  11 => x"00410023",
      12 => x"00108093",  13 => x"00110113",  14 => x"fe3118e3",  15 => x"00008097",
      16 => x"fc408093",  17 => x"00008117",  18 => x"fc010113",  19 => x"00208863",
-     20 => x"0000a023",  21 => x"00408093",  22 => x"fe209ce3",  23 => x"0000a117",
+     20 => x"0000a023",  21 => x"00408093",  22 => x"fe209ce3",  23 => x"00088117",
      24 => x"fa410113",  25 => x"00000097",  26 => x"190080e7",  27 => x"10500073",
      28 => x"ffdff06f",  29 => x"f8410113",  30 => x"00112023",  31 => x"00212223",
      32 => x"00312423",  33 => x"00412623",  34 => x"00512823",  35 => x"00612a23",
@@ -54,7 +57,7 @@ architecture rtl of fsbl_rom is
     124 => x"00008067", 125 => x"fd010113", 126 => x"02912223", 127 => x"c00027b7",
     128 => x"000004b7", 129 => x"02812423", 130 => x"03212023", 131 => x"01312e23",
     132 => x"01412c23", 133 => x"01512a23", 134 => x"01612823", 135 => x"01712623",
-    136 => x"02112623", 137 => x"00f4a023", 138 => x"06400713", 139 => x"ffff8437",
+    136 => x"02112623", 137 => x"00f4a023", 138 => x"04200713", 139 => x"ffff8437",
     140 => x"00e7a623", 141 => x"ffff8a37", 142 => x"ffff89b7", 143 => x"ffff8ab7",
     144 => x"40440913", 145 => x"ffff8b37", 146 => x"02e00b93", 147 => x"308a0513",
     148 => x"00000097", 149 => x"f38080e7", 150 => x"00000097", 151 => x"f7c080e7",
@@ -84,11 +87,11 @@ architecture rtl of fsbl_rom is
     244 => x"000d0a0a", 245 => x"41570d0a", 246 => x"203a4e52", 247 => x"4c425353",
     248 => x"544f4e20", 249 => x"554f4620", 250 => x"0a21444e", 251 => x"0000000d",
     252 => x"4e490d0a", 253 => x"494c4156", 254 => x"0d0a2144", others => x"00000000"
-  );
+);
 
 begin
 
-  process(clka)
+  process (clka)
   begin
     if rising_edge(clka) then
       douta <= rom_memory(to_integer(unsigned(addra)));
@@ -96,4 +99,3 @@ begin
   end process;
 
 end rtl;
-

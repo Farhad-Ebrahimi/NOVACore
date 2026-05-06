@@ -20,6 +20,7 @@ entity pp_alu_control_unit is
 		opcode  : in std_logic_vector( 4 downto 0);
 		funct3  : in std_logic_vector( 2 downto 0);
 		funct7  : in std_logic_vector( 6 downto 0);
+		rs2     : in std_logic_vector( 4 downto 0);  -- rs2 field to distinguish FCVT variants
 		
 		-- Sources of ALU operands:
 		alu_x_src, alu_y_src : out alu_operand_source;
@@ -32,7 +33,7 @@ end entity pp_alu_control_unit;
 architecture behaviour of pp_alu_control_unit is
 begin
 
-	decode_alu: process(opcode, funct3, funct7)
+	decode_alu: process(opcode, funct3, funct7, rs2)
 	begin
 		case opcode is
 			when b"01101" => -- Load upper immediate
@@ -130,12 +131,18 @@ begin
                             alu_op <= ALU_SLTU;
                         end if;
 					when b"100" =>
-						alu_op <= ALU_XOR;
+            if funct7 = "0000000" then
+              alu_op <= ALU_XOR;
+            else
+              alu_op <= ALU_DIV;
+            end if;
 					when b"101" =>
 						if funct7 = b"0000000" then
 							alu_op <= ALU_SRL;
-						else
+            elsif funct7 = b"0100000" then
 							alu_op <= ALU_SRA;
+            else
+              alu_op <= ALU_DIVU;
 						end if;
 					when b"110" =>
 						alu_op <= ALU_OR;
@@ -152,6 +159,78 @@ begin
 				alu_x_src <= ALU_SRC_CSR;
 				alu_y_src <= ALU_SRC_NULL;
 				alu_op <= ALU_ADD;
+			when b"10100" => -- Floating-point operations (opcode 0x53) ----fpu 2025
+				alu_x_src <= ALU_SRC_REG;
+				alu_y_src <= ALU_SRC_REG;
+				
+				case funct7 is  ----fpu 2025
+					when b"0000000" =>
+						alu_op <= ALU_FADD;  	----fpu 2025
+					when b"0000100" =>
+						alu_op <= ALU_FSUB;  	----fpu 2025
+					when b"0001000" =>
+						alu_op <= ALU_FMUL;  	----fpu 2025
+					when b"0001100" =>
+						alu_op <= ALU_FDIV;  	----fpu 2025
+		--Move the single-precision value in floating-point register rs1 
+		----represented in IEEE 754-2008 encoding to the lower 32 bits of integer register rd.
+					when b"1110000" =>
+					     alu_op <= ALU_FMVXW;  	----fpu 2025 (FP register → Integer register) 
+					when b"1111000" =>
+					     alu_op <= ALU_FMVWX;  	----fpu 2025 (Integer register → FP register)
+					when b"1010000" =>
+					     alu_op <= ALU_Comp;  	----fpu 2025
+						 case funct3 is
+							when b"010" =>
+								alu_op <= ALU_FEQ;  	----fpu 2025 (FEQ.S)
+							when b"001" =>
+								alu_op <= ALU_FLT;  	----fpu 2025 (FLT.S)
+							when b"000" =>
+								alu_op <= ALU_FLE;  	----fpu 2025 (FLE.S)
+							when others =>
+								alu_op <= ALU_INVALID;
+						 end case;
+					when b"1100000" =>
+					-- FCVT: Check rs2 to distinguish signed vs unsigned
+					if rs2 = b"00000" then
+						alu_op <= ALU_FCVT_W;   -- FCVT.W.S (FP → signed int)
+					elsif rs2 = b"00001" then
+						alu_op <= ALU_FCVT_WU;  -- FCVT.WU.S (FP → unsigned int)
+					else
+						alu_op <= ALU_INVALID;
+					end if;				
+					when b"1101000" =>
+				-- FCVT.S: Check rs2 to distinguish signed vs unsigned (int → FP)
+				if rs2 = b"00000" then
+					alu_op <= ALU_FCVT_S_W;  -- FCVT.S.W (signed int → FP)
+				elsif rs2 = b"00001" then
+					alu_op <= ALU_FCVT_S_WU; -- FCVT.S.WU (unsigned int → FP)
+				else
+					alu_op <= ALU_INVALID;
+				end if;					
+				when others =>
+						alu_op <= ALU_INVALID;
+				end case;
+			when b"00001" => -- Floating-point load (FLW)
+				alu_x_src <= ALU_SRC_REG;
+				alu_y_src <= ALU_SRC_IMM;
+				
+				case funct3 is
+					when b"010" =>
+						alu_op <= ALU_ADD;  -- Address calculation: base + offset
+					when others =>
+						alu_op <= ALU_INVALID;
+				end case;
+			when b"01001" => -- Floating-point Store (FSW)
+				alu_x_src <= ALU_SRC_REG;
+				alu_y_src <= ALU_SRC_IMM;
+				
+				case funct3 is
+					when b"010" =>
+						alu_op <= ALU_ADD;  -- Address calculation: base + offset
+					when others =>
+						alu_op <= ALU_INVALID;
+				end case;
 			when others =>
 				alu_x_src <= ALU_SRC_REG;
 				alu_y_src <= ALU_SRC_REG;

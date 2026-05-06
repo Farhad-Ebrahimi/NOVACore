@@ -9,16 +9,22 @@ TARGET_LD := $(TARGET_PREFIX)-gcc
 TARGET_SIZE := $(TARGET_PREFIX)-size
 TARGET_OBJCOPY := $(TARGET_PREFIX)-objcopy
 HEXDUMP ?= hexdump
-
-TARGET_CFLAGS +=  -march=rv32im_zicsr -mno-div -Wall -Os -fomit-frame-pointer \
+##-Wl,-m,elf64lriscv -mno-div -mno-div
+TARGET_CFLAGS +=  -march=rv32imf_zicsr -mabi=ilp32 -mno-div  -Wall -Os -fomit-frame-pointer \
 	-ffreestanding -fno-builtin -fanalyzer -I../.. -I../../libsoc -std=gnu99 \
 	-Wall -Werror=implicit-function-declaration -ffunction-sections -fdata-sections
-TARGET_LDFLAGS += -march=rv32im_zicsr -mno-div -nostartfiles -L../libsoc \
-	-Wl,-m,elf32lriscv --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
+TARGET_LDFLAGS += -march=rv32imf_zicsr -mabi=ilp32 -mno-div -nostartfiles -L../libsoc \
+	 --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
 
-# Rule for converting an ELF file to a binary file:
+##ARGET_CFLAGS +=  -march=rv32imf_zicsr -mno-div -Wall -Os -fomit-frame-pointer \
+##	-ffreestanding -fno-builtin -fanalyzer -I../.. -I../../libsoc -std=gnu99 \
+##	-Wall -Werror=implicit-function-declaration -ffunction-sections -fdata-sections
+##ARGET_LDFLAGS += -march=rv32imf_zicsr -mno-div -nostartfiles -L../libsoc \
+##	-Wl,-m,elf32lriscv --specs=nosys.specs -Wl,--no-relax -Wl,--gc-sections
+
 %.bin: %.elf
-	$(TARGET_OBJCOPY) -j .text -j .data -j .rodata -O binary $< $@
+	$(TARGET_OBJCOPY) -O binary $< $@
+
 
 # Rule for generating coefficient files for initializing block RAM resources
 # from binary files:
