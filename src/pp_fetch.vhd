@@ -57,7 +57,7 @@ begin
 
 	imem_address <= pc_next when cancel_fetch = '0' else pc;
 
-	do_flush <= wrong_prediction;
+	do_flush <= branch;
 	
 	--instruction_data <= imem_data_in;    ----stalls for fpus are properly Ored, no dependencies
 	instruction_data <= imem_data_in when ( stall = '0' and stall_fpu ='0' ) and imem_ack='1'  else imem_data;  ---or stall_fpu ='0'
@@ -66,7 +66,7 @@ begin
 
 	imem_req <= not reset;
 
-	set_pc : process (clk)
+	set_pc: process(clk)
 	begin
 		if rising_edge(clk) then
 			if reset = '1' then
@@ -75,7 +75,7 @@ begin
 				imem_data <= (others=>'0');
 
 			else
-				if (exception = '1' or wrong_prediction = '1') and imem_ack = '0' then
+				if (exception = '1' or branch = '1') and imem_ack = '0' then
 					cancel_fetch <= '1';
 					pc <= pc_next;
 				elsif cancel_fetch = '1' and imem_ack = '1' then
